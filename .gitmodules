@@ -1,0 +1,3 @@
+[submodule "compiler_judge"]
+	path = compiler_judge
+	url = git@github.com:FridayHan/compiler_judge.git
