@@ -37,3 +37,4 @@ build/
 
 # vi temp files
 *.swp
+compiler_judge/
