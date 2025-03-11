@@ -95,7 +95,9 @@ void ConstantPropagation::visit(Assign *node) {
     node->left->accept(*this);
     l = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No left expression found in the Assign statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -104,7 +106,9 @@ void ConstantPropagation::visit(Assign *node) {
     node->exp->accept(*this);
     r = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No right expression found in the Assign statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -125,7 +129,9 @@ void ConstantPropagation::visit(Return *node) {
     node->exp->accept(*this);
     e = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No expression found in the Return statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -177,7 +183,9 @@ void ConstantPropagation::visit(BinaryOp *node) {
     else if (node->op->op == "==") val = val1 == val2;
     else if (node->op->op == "!=") val = val1 != val2;
     else {
+      #ifdef DEBUG
       cerr << "Error: Unknown operator in the BinaryOp statement" << endl;
+      #endif
       newNode = nullptr;
       return;
     }
@@ -218,13 +226,22 @@ void ConstantPropagation::visit(UnaryOp *node) {
     node->exp->accept(*this);
     e = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No expression found in the UnaryOp statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
   if (node->op == nullptr) {
+    #ifdef DEBUG
     cerr << "Error: No operator found in the UnaryOp statement" << endl;
+    #endif
     newNode = nullptr;
+    return;
+  }
+  if (node->op->op == "-" && e->getASTKind() == ASTKind:: IntExp) {
+    int val = -(static_cast<IntExp *>(e)->val);
+    newNode = new IntExp(node->getPos()->clone(), val);
     return;
   }
   newNode = new UnaryOp(node->getPos()->clone(), node->op->clone(), e);

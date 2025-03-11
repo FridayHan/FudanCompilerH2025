@@ -15,16 +15,16 @@ using namespace fdmj;
 #define StmList vector<Stm *>
 #define ExpList vector<Exp *>
 
-Program *execute(Program *root) {
-  if (root == nullptr) return nullptr;
+int execute(Program *root) {
+  if (root == nullptr) return 0;
   Executor v(nullptr);
   root->accept(v);
-  return dynamic_cast<Program *>(v.newNode);
+  return v.ret_val;
 }
 
 template <typename T>
 static vector<T *> *visitList(Executor &v, vector<T *> *tl) {
-  if (tl == nullptr || tl->size() == 0) return nullptr;
+  if (tl == nullptr || tl->size() == 0) return 0;
   vector<T *> *vt = new vector<T *>();
   for (T *x : *tl) {
     if (x) {
@@ -89,7 +89,9 @@ void Executor::visit(Assign *node) {
     node->left->accept(*this);
     l = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No left expression found in the Assign statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -98,7 +100,9 @@ void Executor::visit(Assign *node) {
     node->exp->accept(*this);
     r = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No right expression found in the Assign statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -108,8 +112,11 @@ void Executor::visit(Assign *node) {
 
   if (l->getASTKind() == ASTKind::IdExp)
     symbolTable[static_cast<IdExp *>(l)->id] = value;
-  else
+  else {
+    #ifdef DEBUG
     cerr << "Error: Left expression is not an IdExp in the Assign statement" << endl;
+    #endif
+  }
   newNode = new Assign(node->getPos()->clone(), l, intExp);
 }
 
@@ -126,15 +133,16 @@ void Executor::visit(Return *node) {
     node->exp->accept(*this);
     e = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No expression found in the Return statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
-  int returnValue = evaluateExpression(node->exp);
+  ret_val = evaluateExpression(node->exp);
 #ifdef DEBUG
   cerr << "Return value: " << returnValue << endl;
 #endif
-  std::cout << returnValue << std::endl;
   newNode = new Return(node->getPos()->clone(), e);
 }
 
@@ -151,7 +159,9 @@ void Executor::visit(BinaryOp *node) {
     node->left->accept(*this);
     l = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No left expression found in the BinaryOp statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -160,7 +170,9 @@ void Executor::visit(BinaryOp *node) {
     node->right->accept(*this);
     r = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No right expression found in the BinaryOp statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
@@ -185,13 +197,22 @@ void Executor::visit(UnaryOp *node) {
     node->exp->accept(*this);
     e = static_cast<Exp *>(newNode);
   } else {
+    #ifdef DEBUG
     cerr << "Error: No expression found in the UnaryOp statement" << endl;
+    #endif
     newNode = nullptr;
     return;
   }
   if (node->op == nullptr) {
+    #ifdef DEBUG
     cerr << "Error: No operator found in the UnaryOp statement" << endl;
+    #endif
     newNode = nullptr;
+    return;
+  }
+  if (node->op->op == "-") {
+    int val = -evaluateExpression(node->exp);
+    newNode = new IntExp(node->getPos()->clone(), val);
     return;
   }
   newNode = new UnaryOp(node->getPos()->clone(), node->op->clone(), e);
@@ -240,8 +261,10 @@ void Executor::visit(IntExp *node) {
 
 int Executor::evaluateExpression(Exp *exp) {
   if (!exp) {
-      std::cerr << "Error: Null expression encountered!" << std::endl;
-      return 0;
+  #ifdef DEBUG
+    std::cerr << "Error: Null expression encountered!" << std::endl;
+  #endif
+    return 0;
   }
 
   switch (exp->getASTKind()) {
@@ -253,7 +276,9 @@ int Executor::evaluateExpression(Exp *exp) {
         if (symbolTable.find(idExp->id) != symbolTable.end()) {
           return symbolTable[idExp->id];
         } else {
+          #ifdef DEBUG
           std::cerr << "Error: Undefined variable " << idExp->id << std::endl;
+          #endif
           return 0;
         }
       }
@@ -267,7 +292,9 @@ int Executor::evaluateExpression(Exp *exp) {
         else if (op == "*")  return val1 * val2;
         else if (op == "/") {
           if (!val2) {
+            #ifdef DEBUG
             std::cerr << "Error: Division by zero!" << std::endl;
+            #endif
             return 0;
           }
           return val1 / val2;
@@ -281,8 +308,21 @@ int Executor::evaluateExpression(Exp *exp) {
         else if (op == "==") return val1 == val2;
         else if (op == "!=") return val1 != val2;
         else {
+          #ifdef DEBUG
           cerr << "Error: Unknown operator in the BinaryOp statement" << endl;
+          #endif
           newNode = nullptr;
+          return 0;
+        }
+      }
+      case ASTKind::UnaryOp: {
+        UnaryOp *unOp = static_cast<UnaryOp*>(exp);
+        int val = evaluateExpression(unOp->exp);
+        if (unOp->op->op == "-") return -val;
+        else {
+          #ifdef DEBUG
+          cerr << "Error: Unknown operator in the UnaryOp statement" << endl;
+          #endif
           return 0;
         }
       }
@@ -292,8 +332,10 @@ int Executor::evaluateExpression(Exp *exp) {
         return static_cast<IntExp*>(esc->exp)->val;
       }
       default:
+        #ifdef DEBUG
         cerr << "Type: " << stringASTKind(exp->getASTKind()) << endl;
         cerr << "Error: Unsupported expression type!" << endl;
+        #endif
         return 0;
   }
 }

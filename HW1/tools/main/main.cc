@@ -43,6 +43,7 @@ int main(int argc, const char *argv[]) {
   string file_irp = file + ".3.irp";
   string file_stm = file + ".4.stm";
   string file_liv = file + ".5.liv";
+  string file_return = file + ".3.out"; // return
 
 #ifdef DEBUG
   cout << "------Parsing fmj source file: " << file_fmj << "------------" << endl;
@@ -115,12 +116,14 @@ int main(int argc, const char *argv[]) {
 #endif
   Program *root5 = constantPropagate(root4);
   w = ast2xml(root5, with_location_info);
-  Program *root6 = execute(root5);
-  w = ast2xml(root6, with_location_info);
 #ifdef DEBUG
   cout << "Saving AST (XML) to: " << file_ast4 << endl;
 #endif
   w->SaveFile(file_ast4.c_str());
+
+  ofstream outFile(file_return);
+  outFile << execute(root) << endl << execute(root5) << endl;
+  outFile.close();
 #ifdef DEBUG
   cout << "-----Done---" << endl;
 #endif

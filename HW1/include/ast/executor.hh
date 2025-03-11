@@ -8,13 +8,14 @@
 using namespace std;
 using namespace fdmj;
 
-Program *execute(Program *root);
+int execute(Program *root);
 
 class Executor : public ASTVisitor {
 private:
   unordered_map<string, int> symbolTable;
   int evaluateExpression(Exp *exp);
 public:
+  int ret_val = 0;
   AST *newNode =
       nullptr; // newNode is the root of a clone of the original AST (sub) tree
   Executor(AST *newNode) : newNode(newNode) {}
