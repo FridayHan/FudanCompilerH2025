@@ -24,8 +24,6 @@ clean:
 rebuild: clean build
 
 test: $(EXEC)
-	@echo "Running tests..."
 	@for file in $(wildcard $(TEST_DIR)/*.txt); do \
-		echo "Testing with $$file"; \
 		$(EXEC) $$file; \
 	done

@@ -8,25 +8,23 @@ void yyerror(const char *s) { printf("reject\n"); }
 
 %%
 
-S : T
-  |
+S : S S
+  | OPEN_PAREN S CLOSE_PAREN
+  | OPEN_BRACKET P CLOSE_BRACKET
+  | /* empty */
   ;
 
-T : C T
-  | C
-  ;
-
-C : OPEN_PAREN T CLOSE_PAREN
-  | OPEN_BRACKET E CLOSE_BRACKET
-  | OPEN_PAREN CLOSE_PAREN
-  ;
-
-E : S OPEN_PAREN E
-  | S
+P : OPEN_PAREN
+  | OPEN_PAREN P CLOSE_PAREN
+  | OPEN_BRACKET P CLOSE_BRACKET
+  | P P
+  | /* empty */
   ;
 
 %%
 int main() {
-  yyparse();
+  if (yyparse() == 0) {
+    printf("accept\n");
+  }
   return 0;
 }
