@@ -110,7 +110,7 @@
     <INITIAL>. {
       printf("Illegal input \"%c\"\n", yytext[0]);
     }
-
+    
     <COMMENT1>\n {BEGIN INITIAL;}
     <COMMENT1>. {}
     …
@@ -213,38 +213,38 @@
 
     ```yacc
     %%
-
+    
     PROG: MAINMETHOD CLASSDECLLIST {
       root = A_Prog(A_Pos($1->pos->line, $1->pos->pos), $1, $2);
       $$ = root;
     } ;
-
+    
     MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' VARDECLLIST STMLIST '}' {
       $$ = A_MainMethod($1, $7, $8);
     } ;
-
+    
     VARDECLLIST: /* empty */ {
       $$ = NULL;
     } | VARDECL VARDECLLIST {
       $$ = A_VarDeclList($1, $2);
     } ;
-
+    
     ...
-
+    
     STM: ...
     } | IF '(' EXP ')' STM ELSE STM {
       $$ = A_IfStm($1, $3, $5, $7);
     } | IF '(' EXP ')' STM %prec IF {
       $$ = A_IfStm($1, $3, $5, NULL);
     } ...
-
+    
     ...
-
+    
     EXP: ... 
     } | MINUS EXP %prec UMINUS {
       $$ = A_MinusExp($1, $2);
     } ...
-
+    
     ...
     ```
 - 辅助函数
@@ -253,7 +253,7 @@
   void yyerror(char *s) {
     fprintf(stderr, "%s\n",s);
   }
-
+  
   int yywrap() {
     return(1);
   }
@@ -263,11 +263,11 @@
   ```c
   ...
   #include "frontend/parser.h" // yacc generated. must put last!
-
+  
   A_prog root;
-
+  
   extern int yyparse();
-
+  
   int main(int argc, const char * argv[]) {
     yyparse();
     ...
@@ -283,56 +283,56 @@
 
   ```lex
   /* 1. declarations */
-
+  
   /* included code */
   %{
-
+  
   #include "parser.h"
-
+  
   %}
-
+  
   /* start conditions */
-
+  
   /* regexp nicknames */
-
+  
   %% /* 2. rules */
-
+  
   %% /* 3. programs */
   ```
 - Yacc
 
   ```yacc
   /* 1. declarations */
-
+  
   /* included code */
   %{
-
+  
   #include <stdio.h>
-
+  
   extern int yylex();
   extern void yyerror(char*);
   extern int  yywrap();
-
+  
   %}
-
+  
   /* yylval */
-
+  
   /* termianl symbols */
-
+  
   /* non-termianl symbols */
-
+  
   /* start symbol */
-
+  
   /* precedence */
-
+  
   %% /* 2. rules */
-
+  
   %% /* 3. programs */
-
+  
   void yyerror(char *s) {
     fprintf(stderr, "%s\n",s);
   }
-
+  
   int yywrap() {
     return(1);
   }
@@ -344,5 +344,4 @@
 2. Yacc：根据语法，定义termianl symbols（tokens）、non-termianl symbols、start symbol
 3. Lex：根据词法，编写词法解析规则，在代码部分将token的值填充进yylval，并将token返回给Yacc
 4. Yacc：根据语法，定义precedence，编写语法解析规则，在代码部分生成AST
-
 
