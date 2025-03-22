@@ -120,15 +120,9 @@ public:
 
 class FuncDecl : public Tree {
 public:
-<<<<<<< HEAD
-  string name; //function name
-  std::vector<tree::Temp*> *args; //arguments
-  std::vector<tree::Block*> *blocks; //first block is the entry block
-=======
   string name; //function name (unique name: classname + methodname)
   std::vector<tree::Temp*> *args; //arguments
   std::vector<tree::Block*> *blocks; //first block is the entry block (the first label of block[0] is the entry label)
->>>>>>> c4c21b1 (HW4 added)
   Type return_type;
   int last_temp_num; //last temp number used in the function
   int last_label_num; //last label number used in the function
@@ -282,11 +276,7 @@ class Call : public Exp {
     string id;
     Exp *obj;
     std::vector<tree::Exp*> *args;
-<<<<<<< HEAD
-    Call(Type t, string id, Exp *obj, std::vector<tree::Exp*> *args) : 
-=======
     Call(tree::Type t, string id, tree::Exp *obj, std::vector<tree::Exp*> *args) : 
->>>>>>> c4c21b1 (HW4 added)
       Exp(t), id(id), obj(obj), args(args) {}
     Kind getTreeKind() { return Kind::CALL; }
     void accept(Visitor &v) { v.visit(this); }
@@ -296,11 +286,7 @@ class ExtCall : public Exp {
   public:
     string extfun;
     std::vector<tree::Exp*> *args;
-<<<<<<< HEAD
-    ExtCall(Type t, string extfun, std::vector<tree::Exp*> *args) : 
-=======
     ExtCall(tree::Type t, string extfun, std::vector<tree::Exp*> *args) : 
->>>>>>> c4c21b1 (HW4 added)
       Exp(t), extfun(extfun), args(args) {}
     Kind getTreeKind() { return Kind::EXTCALL; }
     void accept(Visitor &v) { v.visit(this); }
