@@ -62,12 +62,12 @@ public:
      Tr_nx(tree::Stm* s) {
           stm = s;
      }
-     Tr_cx* unCx(Temp_map* tm);
-     Tr_nx* unNx(Temp_map* tm);
-     Tr_ex* unEx(Temp_map* tm);
+     Tr_cx* unCx(Temp_map* tm) override;
+     Tr_nx* unNx(Temp_map* tm) override;
+     Tr_ex* unEx(Temp_map* tm) override;
 };
      
-class Tr_cx {
+class Tr_cx : public Tr_Exp {
 public:
      Patch_list* true_list;
      Patch_list* false_list;
@@ -77,9 +77,9 @@ public:
           false_list = f;
           stm = s;
      }
-     Tr_ex* unEx(Temp_map* tm);
-     Tr_nx* unNx(Temp_map* tm);
-     Tr_cx* unCx(Temp_map* tm);
+     Tr_ex* unEx(Temp_map* tm) override;
+     Tr_nx* unNx(Temp_map* tm) override;
+     Tr_cx* unCx(Temp_map* tm) override;
 };
      
 #endif
