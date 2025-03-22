@@ -248,6 +248,7 @@ void Name_Maps::print() {
                 cout << c << "->" << m << "->" << fv << " with type=" << type_kind_string(t->typeKind) << " ; ";
             }
         }
-        cout << endl;
+        if (get_method_list(c)->size()!=0)
+            cout << endl;
     }
 }

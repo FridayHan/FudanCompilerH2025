@@ -6,22 +6,27 @@
 #include "semant.hh"
 #include "temp.hh"
 #include "treep.hh"
+#include "tr_exp.hh"
+#include "config.hh"
 
 using namespace std;
 //using namespace fdmj;
 //using namespace tree;
 
-#define ClassDeclList vector<fdmj::ClassDecl*>
-#define VarDeclList vector<fdmj::VarDecl*>
-
+//forward declaration
 class Class_table;
-class Var_table;
+class Method_var_table;
 class Patch_list;
+class ASTToTreeVisitor;
 
 tree::Program* ast2tree(fdmj::Program* prog, AST_Semant_Map* semant_map);
-Class_table* generate_class_table(ClassDeclList* cdl);
-Var_table* generate_var_table(VarDeclList* vdl);
+Class_table* generate_class_table(AST_Semant_Map* semant_map);
+Method_var_table* generate_method_var_table(string class_name, string method_name, Name_Maps* nm, Temp_map* tm);
 
+//class table is to map each class var and method to an address offset
+//this uses a "universal class" method, i.e., all the classes use the 
+//same class table, with all the possible vars and methods of all classes
+//listed in the same record layout.
 class Class_table {
 public:
      map<string, int> var_pos_map;
@@ -42,71 +47,38 @@ public:
      }
 };
 
-class Var_table {
+//For each method, there is a var table, including formal and local var.
+//(if a method local has a conflict in var name with formal, then local var
+//is used (ignore the formal))
+//Hence, local var will override formal in the Method_var_table.
+//Note: each local var and formal has a type as well (INT or PTR)
+//The return of a method is also taken as a formal, with a special name _^return^_method_name.
+class Method_var_table {
 public:
      map<string, tree::Temp*> *var_temp_map;
-     map<string, fdmj::Type*> *var_type_map;
-     Var_table() {
+     map<string, tree::Type> *var_type_map;
+     Method_var_table() {
           var_temp_map = new map<string, tree::Temp*>();
-          var_type_map = new map<string, fdmj::Type*>();
+          var_type_map = new map<string, tree::Type>();
      };
      tree::Temp* get_var_temp(string var_name) {
           return var_temp_map->at(var_name);
      }
-     fdmj::Type* get_var_type(string var_name) {
+     tree::Type get_var_type(string var_name) {
           return var_type_map->at(var_name);
      }
 };
 
-class Patch_list {
-public:
-     vector<tree::Label*> *true_patch_list;
-     vector<tree::Label*> *false_patch_list;
-     Patch_list() {
-          true_patch_list = new vector<tree::Label*>();
-          false_patch_list = new vector<tree::Label*>();
-     }
-     ~Patch_list() {
-          delete true_patch_list;
-          delete false_patch_list;
-     }
-     void add_true_patch(tree::Label* label) {
-          true_patch_list->push_back(label);
-     }
-     void add_false_patch(tree::Label* label) {
-          false_patch_list->push_back(label);
-     }
-     void patch_true(tree::Label* label) {
-          for (auto l : *true_patch_list) {
-               l->num = l->num == -1 ? label->num: l->num;
-          }
-     }
-     void patch_false(tree::Label* label) {
-          for (auto l : *false_patch_list) {
-               l->num = l->num == -1 ? label->num: l->num;
-          }
-     }
-};
-
 class ASTToTreeVisitor : public fdmj::AST_Visitor {
-     tree::Tree* visit_result; //this is to store the result of a visit
-     Temp_map *visitor_temp_map;
-     Patch_list *visitor_patch_list;
-     Var_table *current_variable_map;
-     Class_table *current_class_table;
 public:
-     ~ASTToTreeVisitor() {
-          delete visitor_temp_map; 
-          delete visitor_patch_list;
-          delete current_variable_map;
-          delete current_class_table;
-     }
-     ASTToTreeVisitor() {
-          visit_result = nullptr; 
-          visitor_temp_map = new Temp_map();
-     }
+     tree::Tree *visit_tree_result = nullptr;
+     //** Here add some "visitor-level members" */
 
-     tree::Tree* getTree() { return visit_result; }
+     ~ASTToTreeVisitor() { }
+
+     ASTToTreeVisitor() { }
+
+     tree::Tree* getTree() { return visit_tree_result; } //return the tree from a single visit (program returns a single tree)
      /*
      T_tree* getTree() { return visit_result_node; }
      Temp_map* getTempMap() { return visitor_temp_map; }
@@ -148,6 +120,5 @@ public:
      void visit(fdmj::OpExp* node) override;
      void visit(fdmj::IntExp* node) override;
 };
-
 
 #endif

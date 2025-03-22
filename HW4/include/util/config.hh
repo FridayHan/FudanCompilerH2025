@@ -32,6 +32,7 @@ public:
         } else
             return compiler_config.at(key);
     }
+    static void print_config();
 };
 
 #endif
