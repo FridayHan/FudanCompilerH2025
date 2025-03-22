@@ -30,7 +30,6 @@ tree::Program* generate_a_testIR_ast2tree() {
     Temp_map *tm = new Temp_map();
     tree::Label *entry_label = tm->newlabel();
     tree::LabelStm *label_stm = new tree::LabelStm(entry_label);
-    tree::Stm *stm = new tree::ExpStm(new tree::Const(0));
     tree::Move *move = new tree::Move(new tree::TempExp(tree::Type::INT, tm->newtemp()), new tree::Const(1));
 
     vector<tree::Stm*> *sl1 = new vector<tree::Stm*>(); sl1->push_back(move);
@@ -43,7 +42,6 @@ tree::Program* generate_a_testIR_ast2tree() {
     tree::Return *ret = new tree::Return(new tree::Const(100));
     vector<tree::Stm*> *sl = new vector<tree::Stm*>();
     sl->push_back(label_stm);
-    sl->push_back(stm);
     sl->push_back(new tree::ExpStm(call));
     sl->push_back(ret);
     tree::Block *block = new tree::Block(entry_label, nullptr, sl);
