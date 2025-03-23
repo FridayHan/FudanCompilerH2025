@@ -141,8 +141,9 @@ public:
 
 class Seq : public Stm {
   public:
-    std::vector<tree::Stm*> *sl;
+    std::vector<tree::Stm*> *sl = nullptr;
     Seq(std::vector<tree::Stm*> *sl): sl(sl) {}
+    Seq() {sl=nullptr;} //if nothing, make sl nullptr
     Kind getTreeKind() { return Kind::SEQ; }
     void accept(Visitor &v) { v.visit(this); }
 };
