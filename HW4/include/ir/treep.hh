@@ -121,7 +121,7 @@ public:
 class FuncDecl : public Tree {
 public:
   string name; //function name (unique name: classname + methodname)
-  std::vector<tree::Temp*> *args; //arguments
+  std::vector<tree::Temp*> *args; //arguments: the first argument is the object pointer (this)
   std::vector<tree::Block*> *blocks; //first block is the entry block (the first label of block[0] is the entry label)
   Type return_type;
   int last_temp_num; //last temp number used in the function
@@ -141,8 +141,9 @@ public:
 
 class Seq : public Stm {
   public:
-    std::vector<tree::Stm*> *sl;
+    std::vector<tree::Stm*> *sl = nullptr;
     Seq(std::vector<tree::Stm*> *sl): sl(sl) {}
+    Seq() {sl=nullptr;} //if nothing, make sl nullptr
     Kind getTreeKind() { return Kind::SEQ; }
     void accept(Visitor &v) { v.visit(this); }
 };
@@ -233,7 +234,7 @@ class Binop : public Exp {
 class Mem : public Exp {
   public:
     Exp *mem;
-    Mem(Exp *mem) : mem(mem) {type = Type::PTR;} 
+    Mem(Type t, Exp *mem) : Exp(t), mem(mem) {} 
     Kind getTreeKind() { return Kind::MEM; }
     void accept(Visitor &v) { v.visit(this); }
 }; 
