@@ -24,7 +24,11 @@ XMLDocument* tree2xml(Program* prog) {
     XMLDeclaration *decl = v.doc->NewDeclaration("xml version=\"1.0\" encoding=\"UTF-8\"");
     v.doc->InsertFirstChild(decl);
     v.visit_result = nullptr;
-    prog->accept(v);
+    if (prog != nullptr) {
+        prog->accept(v);
+    }
+    else 
+        v.visit_result = nullptr;
     if (v.visit_result != nullptr) 
         v.doc->InsertEndChild(v.visit_result);
     return v.doc;
@@ -38,7 +42,6 @@ void Tree2XML::visit(Program* node) {
         visit_result = nullptr;
         return;
     }
-
     XMLElement* element = doc->NewElement("Program");
     if (node->funcdecllist != nullptr) {
         for (auto func : *node->funcdecllist) {
@@ -165,6 +168,11 @@ void Tree2XML::visit(Seq* node) {
         return;
     }
     tinyxml2::XMLElement* element = doc->NewElement("Sequence");
+    if (node->sl == nullptr || node->sl->size() == 0) {
+        //empty block
+        visit_result = nullptr;
+        return;
+    }
     for (auto stm : *node->sl) {
         stm->accept(*this);
         if (visit_result != nullptr) element->InsertEndChild(visit_result);
@@ -266,6 +274,7 @@ void Tree2XML::visit(TempExp* node) {
         return;
     }
     XMLElement* element = doc->NewElement("Temp");
+    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     element->SetAttribute("temp", node->temp->name());
     visit_result = element;
 }
