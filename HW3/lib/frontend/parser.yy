@@ -64,6 +64,17 @@
 %token '(' ')' '[' ']' '{' '}' '=' ',' ';' '.' 
 %token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR NOT
 
+%left OR
+%left AND
+%right NOT
+%left EQ NE LT LE GT GE
+%left ADD MINUS
+%left TIMES DIVIDE
+
+
+
+
+
 //non-terminals, need type information only (not tokens)
 %type <intExp> INTEXP
 %type <intExpList> INTEXPLIST
