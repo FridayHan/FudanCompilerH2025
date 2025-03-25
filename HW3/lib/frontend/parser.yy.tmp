@@ -1,0 +1,949 @@
+%skeleton "lalr1.cc"
+%require  "3.2"
+%language "c++"
+%locations
+
+%code requires {
+  #define DEBUG
+  #undef DEBUG
+  #include <iostream>
+  #include <vector>
+  #include <algorithm>
+  #include <string>
+  #include <variant>
+  #include "ast_location.hh"
+  #include "ASTLexer.hh"
+  #include "ASTheader.hh"
+  #include "FDMJAST.hh"
+
+  using namespace std;
+  using namespace fdmj;
+
+  #define DEBUG_OUT(MSG) \
+    do { \
+      #ifdef DEBUG \
+        cerr << (MSG) << endl; \
+      #endif \
+    } while(0)
+
+  #define SHIFT_AND_RETURN(V, E) \
+    do { \
+      (V)->push_back(E); \
+      rotate((V)->begin(), (V)->end()-1, (V)->end()); \
+      $$ = (V); \
+    } while(0)
+}
+
+%define api.namespace {fdmj}
+%define api.parser.class {ASTParser}
+%define api.value.type {AST_YYSTYPE}
+%define api.location.type {ast_location}
+
+%define parse.error detailed
+%define parse.trace
+
+%header
+%verbose
+
+%parse-param {ASTLexer &lexer}
+%parse-param {const bool debug}
+%parse-param {AST_YYSTYPE* result}
+
+%initial-action
+{
+    #if YYDEBUG != 0
+        set_debug_level(debug);
+    #endif
+};
+
+%code {
+    namespace fdmj 
+    {
+        template<typename RHS>
+        void calcLocation(location_t &current, const RHS &rhs, const std::size_t n);
+    }
+    
+    #define YYLLOC_DEFAULT(Cur, Rhs, N) calcLocation(Cur, Rhs, N)
+    #define yylex lexer.yylex
+    Pos *p;
+}
+
+//terminals with no value 
+%token PUBLIC INT MAIN RETURN
+%token IF ELSE WHILE CONTINUE BREAK PUTINT PUTCH PUTARRAY STARTTIME STOPTIME
+%token TRUE FALSE LENGTH GETINT GETCH GETARRAY THIS
+%token CLASS EXTENDS
+//terminals with value
+%token<i> NONNEGATIVEINT
+%token<s> IDENTIFIER
+%token '(' ')' '[' ']' '{' '}' '=' ',' ';' '.' 
+%token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR NOT
+//non-terminals, need type information only (not tokens)
+%type <intExp> INTEXP
+%type <intExpList> INTEXPLIST
+%type <idExp> ID 
+%type <opExp> OPEXP
+%type <boolExp> BOOLEXP
+%type <program> PROG 
+%type <mainMethod> MAINMETHOD 
+%type <classDecl> CLASSDECL
+%type <classDeclList> CLASSDECLLIST
+%type <type> TYPE
+%type <varDecl> VARDECL
+%type <varDeclList> VARDECLLIST
+%type <methodDecl> METHODDECL
+%type <methodDeclList> METHODDECLLIST
+%type <formalList> FORMALLIST
+%type <stm> STM
+%type <stmList> STMLIST
+%type <exp> EXP
+%type <expList> EXPLIST
+
+%start PROG
+%expect 0
+
+%%
+
+/* 定义 INTEXP */
+INTEXP:
+    NONNEGATIVEINT
+  {
+    DEBUG_OUT("IntExp");
+    $$ = new IntExp(p, $1);
+  }
+  |
+    MINUS NONNEGATIVEINT
+  {
+    DEBUG_OUT("Negative IntExp");
+    $$ = new IntExp(p, -$2);
+  }
+  ;
+
+/* 定义 INTEXPLIST */
+INTEXPLIST:
+    /* empty */
+  {
+    DEBUG_OUT("IntExpList empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  INTEXP INTEXPLIST
+  {
+    DEBUG_OUT("IntExp IntExpList");
+    vector<IntExp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+/* 定义 ID */
+ID:
+    IDENTIFIER
+  {
+    DEBUG_OUT("IdExp");
+    $$ = new IdExp(p, $1);
+  }
+  ;
+
+/* 定义 OPEXP */
+OPEXP:
+    ADD
+  {
+    DEBUG_OUT("OpExp +");
+    $$ = new OpExp(p, "+");
+  }
+  |
+    MINUS
+  {
+    DEBUG_OUT("OpExp -");
+    $$ = new OpExp(p, "-");
+  }
+  |
+    TIMES
+  {
+    DEBUG_OUT("OpExp *");
+    $$ = new OpExp(p, "*");
+  }
+  |
+    DIVIDE
+  {
+    DEBUG_OUT("OpExp /");
+    $$ = new OpExp(p, "/");
+  }
+  |
+    OR
+  {
+    DEBUG_OUT("OpExp ||");
+    $$ = new OpExp(p, "||");
+  }
+  |
+    AND
+  {
+    DEBUG_OUT("OpExp &&");
+    $$ = new OpExp(p, "&&");
+  }
+  |
+    LT
+  {
+    DEBUG_OUT("OpExp <");
+    $$ = new OpExp(p, "<");
+  }
+  |
+    LE
+  {
+    DEBUG_OUT("OpExp <=");
+    $$ = new OpExp(p, "<=");
+  }
+  |
+    GT
+  {
+    DEBUG_OUT("OpExp >");
+    $$ = new OpExp(p, ">");
+  }
+  |
+    GE
+  {
+    DEBUG_OUT("OpExp >=");
+    $$ = new OpExp(p, ">=");
+  }
+  |
+    EQ
+  {
+    DEBUG_OUT("OpExp ==");
+    $$ = new OpExp(p, "==");
+  }
+  |
+    NE
+  {
+    DEBUG_OUT("OpExp !=");
+    $$ = new OpExp(p, "!=");
+  }
+  ;
+
+/* 1. Prog */
+PROG: MAINMETHOD CLASSDECLLIST
+  { 
+    DEBUG_OUT("Program");
+    result->root = new Program(p, $1, $2);
+  }
+  ;
+
+/* 2. MainMethod */
+MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' VARDECLLIST STMLIST '}'
+  {
+    DEBUG_OUT("MainMethod");
+    $$ = new MainMethod(p, $6, $7);
+  }
+  ;
+
+/* 3. VarDeclList */
+VARDECLLIST:
+    /* empty */
+  { 
+    DEBUG_OUT("VarDeclList empty");
+    $$ = new vector<VarDecl*>();
+  }
+  |
+  VARDECL VARDECLLIST
+  {
+    DEBUG_OUT("VarDecl VarDeclList");
+    SHIFT_AND_RETURN($2, $1);
+  }
+  ;
+
+/* 4. VarDecl */
+VARDECL:
+    CLASS IDENTIFIER IDENTIFIER ';'
+  { 
+    DEBUG_OUT("Class VarDecl");
+    $$ = new VarDecl(p, new Type(p, new IdExp(p, $2)), new IdExp(p, $3));
+  }
+  |
+    INT IDENTIFIER ';'
+  { 
+    DEBUG_OUT("Int VarDecl");
+    $$ = new VarDecl(p, new Type(p), new IdExp(p, $2));
+  }
+  |
+    INT IDENTIFIER '=' CONST ';'
+  { 
+    DEBUG_OUT("Int VarDecl with Const");
+    $$ = new VarDecl(p, new Type(p), new IdExp(p, $2), $4);
+  }
+  |
+    INT '[' ']' IDENTIFIER ';'
+  { 
+    DEBUG_OUT("Int Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, new IntExp(p, 0)), new IdExp(p, $4));
+  }
+  |
+    INT '[' ']' IDENTIFIER '=' '{' CONSTLIST '}' ';'
+  { 
+    DEBUG_OUT("Int Array VarDecl with ConstList");
+    $$ = new VarDecl(p, new Type(p, new IntExp(p, 0)), new IdExp(p, $4), $7);
+  }
+  |
+    INT '[' NONNEGATIVEINT ']' IDENTIFIER ';'
+  { 
+    DEBUG_OUT("Int Fixed Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, new IntExp(p, $3)), new IdExp(p, $5));
+  }
+  |
+    INT '[' NONNEGATIVEINT ']' IDENTIFIER '=' '{' CONSTLIST '}' ';'
+  { 
+    DEBUG_OUT("Int Fixed Array VarDecl with ConstList");
+    $$ = new VarDecl(p, new Type(p, new IntExp(p, $3)), new IdExp(p, $5), $8);
+  }
+  ;
+
+/* 5. Const */
+CONST:
+    NONNEGATIVEINT
+  { 
+    DEBUG_OUT("Const");
+    $$ = new IntExp(p, $1);
+  }
+  |
+    MINUS NONNEGATIVEINT
+  { 
+    DEBUG_OUT("Negative Const");
+    $$ = new IntExp(p, -$2);
+  }
+  ;
+
+/* 6. ConstList */
+CONSTLIST:
+    /* empty */
+  { 
+    DEBUG_OUT("ConstList empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+    CONST CONSTREST
+  { 
+    DEBUG_OUT("Const ConstRest");
+    vector<IntExp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+/* 7. ConstRest */
+CONSTREST:
+    /* empty */
+  { 
+    DEBUG_OUT("ConstRest empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+    ',' CONST CONSTREST
+  { 
+    DEBUG_OUT("Comma Const ConstRest");
+    vector<IntExp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+  ;
+
+/* 8. StmList */
+STMLIST:
+    /* empty */
+  {
+    DEBUG_OUT("StmList empty");
+    $$ = new vector<Stm*>();
+  }
+  |
+  STM STMLIST
+  {
+    DEBUG_OUT("Stm StmList");
+    SHIFT_AND_RETURN($2, $1);
+  }
+  ;
+
+/* 9. Stm */
+STM:
+    '{' STMLIST '}'
+  { 
+    DEBUG_OUT("Block Stm");
+    $$ = new Nested(p, $2);
+  }
+  |
+    IF '(' EXP ')' STM ELSE STM
+  { 
+    DEBUG_OUT("If Else Stm");
+    $$ = new If(p, $3, $5, $7);
+  }
+  |
+    IF '(' EXP ')' STM
+  { 
+    DEBUG_OUT("If Stm");
+    $$ = new If(p, $3, $5);
+  }
+  |
+    WHILE '(' EXP ')' STM
+  { 
+    DEBUG_OUT("While Stm");
+    $$ = new While(p, $3, $5);
+  }
+  |
+    WHILE '(' EXP ')' ';'
+  { 
+    DEBUG_OUT("While Stm with semicolon");
+    $$ = new While(p, $3);
+  }
+  |
+    EXP '=' EXP ';'
+  { 
+    DEBUG_OUT("Assign Stm");
+    $$ = new Assign(p, $1, $3);
+  }
+  |
+    EXP '.' IDENTIFIER '(' EXPLIST ')' ';'
+  { 
+    DEBUG_OUT("Method Call Stm");
+    $$ = new CallStm(p, $1, new IdExp(p, $3), $5);
+  }
+  |
+    CONTINUE ';'
+  { 
+    DEBUG_OUT("Continue Stm");
+    $$ = new Continue(p);
+  }
+  |
+    BREAK ';'
+  { 
+    DEBUG_OUT("Break Stm");
+    $$ = new Break(p);
+  }
+  |
+    RETURN EXP ';'
+  { 
+    DEBUG_OUT("Return Stm");
+    $$ = new Return(p, $2);
+  }
+  |
+    PUTINT '(' EXP ')' ';'
+  { 
+    DEBUG_OUT("PutInt Stm");
+    $$ = new PutInt(p, $3);
+  }
+  |
+    PUTCH '(' EXP ')' ';'
+  { 
+    DEBUG_OUT("PutCh Stm");
+    $$ = new PutCh(p, $3);
+  }
+  |
+    PUTARRAY '(' EXP ',' EXP ')' ';'
+  { 
+    DEBUG_OUT("PutArray Stm");
+    $$ = new PutArray(p, $3, $5);
+  }
+  |
+    STARTTIME '(' ')' ';'
+  { 
+    DEBUG_OUT("Starttime Stm");
+    $$ = new Starttime(p);
+  }
+  |
+    STOPTIME '(' ')' ';'
+  { 
+    DEBUG_OUT("Stoptime Stm");
+    $$ = new Stoptime(p);
+  }
+  ;
+
+/* 10. Exp */
+EXP:
+    NONNEGATIVEINT
+  { 
+    DEBUG_OUT("NonNegativeInt Exp");
+    $$ = new IntExp(p, $1);
+  }
+  |
+    TRUE
+  { 
+    DEBUG_OUT("True Exp");
+    $$ = new BoolExp(p, true);
+  }
+  |
+    FALSE
+  { 
+    DEBUG_OUT("False Exp");
+    $$ = new BoolExp(p, false);
+  }
+  |
+    LENGTH '(' EXP ')'
+  { 
+    DEBUG_OUT("Length Exp");
+    $$ = new Length(p, $3);
+  }
+  |
+    GETINT '(' ')'
+  { 
+    DEBUG_OUT("GetInt Exp");
+    $$ = new GetInt(p);
+  }
+  |
+    GETCH '(' ')'
+  { 
+    DEBUG_OUT("GetCh Exp");
+    $$ = new GetCh(p);
+  }
+  |
+    GETARRAY '(' EXP ')'
+  { 
+    DEBUG_OUT("GetArray Exp");
+    $$ = new GetArray(p, $3);
+  }
+  |
+    IDENTIFIER
+  { 
+    DEBUG_OUT("Identifier Exp");
+    $$ = new IdExp(p, $1);
+  }
+  |
+    THIS
+  { 
+    DEBUG_OUT("This Exp");
+    $$ = new This(p);
+  }
+  |
+    EXP ADD EXP
+  { 
+    DEBUG_OUT("Add Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "+"), $3);
+  }
+  |
+    EXP MINUS EXP
+  { 
+    DEBUG_OUT("Minus Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "-"), $3);
+  }
+  |
+    EXP TIMES EXP
+  { 
+    DEBUG_OUT("Times Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "*"), $3);
+  }
+  |
+    EXP DIVIDE EXP
+  { 
+    DEBUG_OUT("Divide Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "/"), $3);
+  }
+  |
+    EXP OR EXP
+  { 
+    DEBUG_OUT("Or Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "||"), $3);
+  }
+  |
+    EXP AND EXP
+  { 
+    DEBUG_OUT("And Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "&&"), $3);
+  }
+  |
+    EXP LT EXP
+  { 
+    DEBUG_OUT("Less Than Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<"), $3);
+  }
+  |
+    EXP LE EXP
+  { 
+    DEBUG_OUT("Less Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<="), $3);
+  }
+  |
+    EXP GT EXP
+  { 
+    DEBUG_OUT("Greater Than Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">"), $3);
+  }
+  |
+    EXP GE EXP
+  { 
+    DEBUG_OUT("Greater Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">="), $3);
+  }
+  |
+    EXP EQ EXP
+  { 
+    DEBUG_OUT("Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "=="), $3);
+  }
+  |
+    EXP NE EXP
+  { 
+    DEBUG_OUT("Not Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "!="), $3);
+  }
+  |
+    '!' EXP
+  { 
+    DEBUG_OUT("Not Exp");
+    $$ = new UnaryOp(p, new OpExp(p, "!"), $2);
+  }
+  |
+    MINUS EXP
+  { 
+    DEBUG_OUT("Negative Exp");
+    $$ = new UnaryOp(p, new OpExp(p, "-"), $2);
+  }
+  |
+    '(' EXP ')'
+  { 
+    DEBUG_OUT("Parenthesis Exp");
+    $$ = $2;
+  }
+  |
+    '(' '{' STMLIST '}' EXP ')'
+  { 
+    DEBUG_OUT("Block Exp");
+    $$ = new Esc(p, $3, $5);
+  }
+  |
+    EXP '.' IDENTIFIER
+  { 
+    DEBUG_OUT("Dot Exp");
+    $$ = new ClassVar(p, $1, new IdExp(p, $3));
+  }
+  |
+    EXP '.' IDENTIFIER '(' EXPLIST ')'
+  { 
+    DEBUG_OUT("Method Call Exp");
+    $$ = new CallExp(p, $1, new IdExp(p, $3), $5);
+  }
+  |
+    EXP '[' EXP ']'
+  { 
+    DEBUG_OUT("Array Access Exp");
+    $$ = new ArrayExp(p, $1, $3);
+  }
+  ;
+
+/* 11. ExpList */
+EXPLIST:
+    /* empty */
+  { 
+    DEBUG_OUT("ExpList empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  EXP EXPREST
+  { 
+    DEBUG_OUT("Exp ExpRest");
+    vector<Exp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+/* 12. ExpRest */
+EXPREST:
+    /* empty */
+  { 
+    DEBUG_OUT("ExpRest empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  ',' EXP EXPREST
+  { 
+    DEBUG_OUT("Comma Exp ExpRest");
+    vector<Exp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+  ;
+
+/* 13. ClassDeclList */
+CLASSDECLLIST:
+    /* empty */
+  {
+    DEBUG_OUT("ClassDeclList empty");
+    $$ = new vector<ClassDecl*>();
+  }
+  |
+  CLASSDECL CLASSDECLLIST
+  {
+    DEBUG_OUT("ClassDecl ClassDeclList");
+    SHIFT_AND_RETURN($2, $1);
+  }
+  ;
+
+/* 14. ClassDecl */
+CLASSDECL:
+    PUBLIC CLASS IDENTIFIER '{' VARDECLLIST METHODDECLLIST '}'
+  { 
+    DEBUG_OUT("ClassDecl");
+    $$ = new ClassDecl(p, new IdExp(p, $3), $5, $6);
+  }
+  |
+    PUBLIC CLASS IDENTIFIER EXTENDS IDENTIFIER '{' VARDECLLIST METHODDECLLIST '}'
+  { 
+    DEBUG_OUT("ClassDecl with Extends");
+    $$ = new ClassDecl(p, new IdExp(p, $3), new IdExp(p, $5), $7, $8);
+  }
+  ;
+
+/* 定义 TYPE */
+TYPE:
+    CLASS IDENTIFIER
+  {
+    DEBUG_OUT("Class Type");
+    $$ = new Type(p, new IdExp(p, $2));
+  }
+  |
+    INT
+  {
+    DEBUG_OUT("Int Type");
+    $$ = new Type(p);
+  }
+  |
+    INT '[' ']'
+  {
+    DEBUG_OUT("Int Array Type");
+    $$ = new Type(p, new IntExp(p, 0));
+  }
+  ;
+
+/* 定义 METHODDECL */
+METHODDECL:
+    PUBLIC TYPE IDENTIFIER '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
+  { 
+    DEBUG_OUT("MethodDecl");
+    $$ = new MethodDecl(p, $2, new IdExp(p, $3), $5, $8, $9);
+  }
+  ;
+
+/* 定义 METHODDECLLIST */
+METHODDECLLIST:
+    /* empty */
+  {
+    DEBUG_OUT("MethodDeclList empty");
+    $$ = new vector<MethodDecl*>();
+  }
+  |
+  METHODDECL METHODDECLLIST
+  {
+    DEBUG_OUT("MethodDecl MethodDeclList");
+    SHIFT_AND_RETURN($2, $1);
+  }
+  ;
+
+/* 定义 FORMAL */
+FORMAL:
+    TYPE IDENTIFIER
+  {
+    DEBUG_OUT("Formal");
+    $$ = new Formal(p, $1, new IdExp(p, $2));
+  }
+  ;
+
+/* 定义 FORMALLIST */
+FORMALLIST:
+    /* empty */
+  {
+    DEBUG_OUT("FormalList empty");
+    $$ = new vector<Formal*>();
+  }
+  |
+  FORMAL FORMALLIST
+  {
+    DEBUG_OUT("Formal FormalList");
+    SHIFT_AND_RETURN($2, $1);
+  }
+  ;
+
+/* 定义 BOOLEXP */
+BOOLEXP:
+    TRUE
+  {
+    DEBUG_OUT("True BoolExp");
+    $$ = new BoolExp(p, true);
+  }
+  |
+    FALSE
+  {
+    DEBUG_OUT("False BoolExp");
+    $$ = new BoolExp(p, false);
+  }
+  ;
+
+/* 定义 BINARYOP */
+BINARYOP:
+    EXP ADD EXP
+  {
+    DEBUG_OUT("Add BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "+"), $3);
+  }
+  |
+    EXP MINUS EXP
+  {
+    DEBUG_OUT("Minus BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "-"), $3);
+  }
+  |
+    EXP TIMES EXP
+  {
+    DEBUG_OUT("Times BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "*"), $3);
+  }
+  |
+    EXP DIVIDE EXP
+  {
+    DEBUG_OUT("Divide BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "/"), $3);
+  }
+  |
+    EXP OR EXP
+  {
+    DEBUG_OUT("Or BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "||"), $3);
+  }
+  |
+    EXP AND EXP
+  {
+    DEBUG_OUT("And BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "&&"), $3);
+  }
+  |
+    EXP LT EXP
+  {
+    DEBUG_OUT("Less Than BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<"), $3);
+  }
+  |
+    EXP LE EXP
+  {
+    DEBUG_OUT("Less Equal BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<="), $3);
+  }
+  |
+    EXP GT EXP
+  {
+    DEBUG_OUT("Greater Than BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">"), $3);
+  }
+  |
+    EXP GE EXP
+  {
+    DEBUG_OUT("Greater Equal BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">="), $3);
+  }
+  |
+    EXP EQ EXP
+  {
+    DEBUG_OUT("Equal BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "=="), $3);
+  }
+  |
+    EXP NE EXP
+  {
+    DEBUG_OUT("Not Equal BinaryOp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "!="), $3);
+  }
+  ;
+
+/* 定义 UNARYOP */
+UNARYOP:
+    '!' EXP
+  {
+    DEBUG_OUT("Not UnaryOp");
+    $$ = new UnaryOp(p, new OpExp(p, "!"), $2);
+  }
+  |
+    MINUS EXP
+  {
+    DEBUG_OUT("Negative UnaryOp");
+    $$ = new UnaryOp(p, new OpExp(p, "-"), $2);
+  }
+  ;
+
+/* 定义 ARRAYEXP */
+ARRAYEXP:
+    EXP '[' EXP ']'
+  {
+    DEBUG_OUT("Array Access Exp");
+    $$ = new ArrayExp(p, $1, $3);
+  }
+  ;
+
+/* 定义 CALLEXP */
+CALLEXP:
+    EXP '.' IDENTIFIER '(' EXPLIST ')'
+  {
+    DEBUG_OUT("Method Call Exp");
+    $$ = new CallExp(p, $1, new IdExp(p, $3), $5);
+  }
+  ;
+
+/* 定义 CLASSVAR */
+CLASSVAR:
+    EXP '.' IDENTIFIER
+  {
+    DEBUG_OUT("Dot Exp");
+    $$ = new ClassVar(p, $1, new IdExp(p, $3));
+  }
+  ;
+
+/* 定义 ESC */
+ESC:
+    '(' '{' STMLIST '}' EXP ')'
+  {
+    DEBUG_OUT("Block Exp");
+    $$ = new Esc(p, $3, $5);
+  }
+  ;
+
+%%
+/*
+void yyerror(char *s) {
+  fprintf(stderr, "%s\n",s);
+}
+
+int yywrap() {
+  return(1);
+}
+*/
+
+//%code 
+namespace fdmj 
+{
+    template<typename RHS>
+    inline void calcLocation(location_t &current, const RHS &rhs, const std::size_t n)
+    {
+        current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
+                                    YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
+        p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
+    }
+    
+    void ASTParser::error(const location_t &location, const std::string &message)
+    {
+        std::cerr << "Error at lines " << location << ": " << message << std::endl;
+    }
+
+  Program* fdmjParser(ifstream &fp, const bool debug) {
+    fdmj:AST_YYSTYPE result; 
+    result.root = nullptr;
+    fdmj::ASTLexer lexer(fp, debug);
+    fdmj::ASTParser parser(lexer, debug, &result); //set up the parser
+    if (parser() ) { //call the parser
+      cout << "Error: parsing failed" << endl;
+      return nullptr;
+    }
+    if (debug) cout << "Parsing successful" << endl;
+    return result.root;
+  }
+
+  Program*  fdmjParser(const string &filename, const bool debug) {
+    std::ifstream fp(filename);
+    if (!fp) {
+      cout << "Error: cannot open file " << filename << endl;
+      return nullptr;
+    }
+    return fdmjParser(fp, debug);
+  }
+}

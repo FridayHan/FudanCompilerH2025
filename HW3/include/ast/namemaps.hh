@@ -50,7 +50,7 @@ public:
 class AST_Name_Map_Visitor : public AST_Visitor {
 private:
     Name_Maps *name_maps; //this is the map for all names in the program
-    //you are allowed to add other members here
+    // TODO: you are allowed to add other members here
 public:
     AST_Name_Map_Visitor() {
         name_maps = new Name_Maps();
