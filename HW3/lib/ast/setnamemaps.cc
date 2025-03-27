@@ -59,6 +59,18 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
   if (node == nullptr) {
     return;
   }
+  
+  // 记录类名和继承关系
+  string class_name = node->id->id;
+  current_class = class_name;
+  name_maps->add_class(class_name);
+  
+  // 如果有继承关系，添加到类层次结构中
+  if (node->eid != nullptr) {
+    string parent_name = node->eid->id;
+    name_maps->add_class_hiearchy(class_name, parent_name);
+  }
+  
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
       vd->accept(*this);
@@ -69,6 +81,10 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
       md->accept(*this);
     }
   }
+  
+  // 访问完类后重置当前类名
+  current_class = "";
+  
   if (node->id != nullptr) {
     node->id->accept(*this);
   }
@@ -103,6 +119,18 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
   if (node == nullptr) {
     return;
   }
+  
+  // 根据上下文确定是类变量还是方法变量
+  if (!current_class.empty()) {
+    if (!current_method.empty() && !in_formal) {
+      // 方法内的局部变量
+      name_maps->add_method_var(current_class, current_method, node->id->id, node);
+    } else if (current_method.empty()) {
+      // 类变量
+      name_maps->add_class_var(current_class, node->id->id, node);
+    }
+  }
+  
   if (node->type != nullptr) {
     node->type->accept(*this);
   }
@@ -125,17 +153,33 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   if (node == nullptr) {
     return;
   }
+  
+  // 记录方法名
+  string method_name = node->id->id;
+  current_method = method_name;
+  name_maps->add_method(current_class, method_name);
+  
+  // 准备收集形参列表
+  current_formal_list.clear();
+  in_formal = true;
+  
+  if (node->fl != nullptr) {
+    for (auto f : *(node->fl)) {
+      f->accept(*this);
+    }
+  }
+  
+  // 添加方法形参列表
+  name_maps->add_method_formal_list(current_class, method_name, current_formal_list);
+  in_formal = false;
+  
   if (node->type != nullptr) {
     node->type->accept(*this);
   }
   if (node->id != nullptr) {
     node->id->accept(*this);
   }
-  if (node->fl != nullptr) {
-    for (auto f : *(node->fl)) {
-      f->accept(*this);
-    }
-  }
+  
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
       vd->accept(*this);
@@ -146,6 +190,9 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
       s->accept(*this);
     }
   }
+  
+  // 访问完方法后重置当前方法名
+  current_method = "";
 }
 
 void AST_Name_Map_Visitor::visit(Formal *node) {
@@ -155,6 +202,14 @@ void AST_Name_Map_Visitor::visit(Formal *node) {
   if (node == nullptr) {
     return;
   }
+  
+  // 记录方法形参
+  if (!current_class.empty() && !current_method.empty() && in_formal) {
+    string var_name = node->id->id;
+    name_maps->add_method_formal(current_class, current_method, var_name, node);
+    current_formal_list.push_back(var_name);
+  }
+  
   if (node->type != nullptr) {
     node->type->accept(*this);
   }

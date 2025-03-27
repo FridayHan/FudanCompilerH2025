@@ -12,11 +12,14 @@ using namespace std;
 using namespace fdmj;
 
 Name_Maps* makeNameMaps(Program* node) {
-    std::cout << "TODO" << std::endl;
-    return nullptr;
-    // AST_Name_Map_Visitor name_visitor;
-    // node->accept(name_visitor);
-    // return name_visitor.getNameMaps();
+    AST_Name_Map_Visitor name_visitor;
+    node->accept(name_visitor);
+    Name_Maps* name_maps = name_visitor.getNameMaps();
+    
+    // 调试输出名称映射
+    name_maps->print();
+    
+    return name_maps;
 }
 
 bool Name_Maps::is_class(string class_name) {

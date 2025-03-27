@@ -50,10 +50,19 @@ public:
 class AST_Name_Map_Visitor : public AST_Visitor {
 private:
     Name_Maps *name_maps; //this is the map for all names in the program
-    // TODO: you are allowed to add other members here
+    // TODO
+    string current_class; // 当前正在访问的类名
+    string current_method; // 当前正在访问的方法名
+    bool in_formal; // 标记是否在处理形参
+    vector<string> current_formal_list; // 当前方法的形参列表
+    
 public:
     AST_Name_Map_Visitor() {
         name_maps = new Name_Maps();
+        // TODO
+        current_class = "";
+        current_method = "";
+        in_formal = false;
     }
     Name_Maps* getNameMaps() { return name_maps; }
 
