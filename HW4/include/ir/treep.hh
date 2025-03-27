@@ -120,9 +120,15 @@ public:
 
 class FuncDecl : public Tree {
 public:
+<<<<<<< HEAD
   string name; //function name
   std::vector<tree::Temp*> *args; //arguments
   std::vector<tree::Block*> *blocks; //first block is the entry block
+=======
+  string name; //function name (unique name: classname + methodname)
+  std::vector<tree::Temp*> *args; //arguments: the first argument is the object pointer (this)
+  std::vector<tree::Block*> *blocks; //first block is the entry block (the first label of block[0] is the entry label)
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
   Type return_type;
   int last_temp_num; //last temp number used in the function
   int last_label_num; //last label number used in the function
@@ -141,8 +147,14 @@ public:
 
 class Seq : public Stm {
   public:
+<<<<<<< HEAD
     std::vector<tree::Stm*> *sl;
     Seq(std::vector<tree::Stm*> *sl): sl(sl) {}
+=======
+    std::vector<tree::Stm*> *sl = nullptr;
+    Seq(std::vector<tree::Stm*> *sl): sl(sl) {}
+    Seq() {sl=nullptr;} //if nothing, make sl nullptr
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
     Kind getTreeKind() { return Kind::SEQ; }
     void accept(Visitor &v) { v.visit(this); }
 };
@@ -233,7 +245,11 @@ class Binop : public Exp {
 class Mem : public Exp {
   public:
     Exp *mem;
+<<<<<<< HEAD
     Mem(Exp *mem) : mem(mem) {type = Type::PTR;} 
+=======
+    Mem(Type t, Exp *mem) : Exp(t), mem(mem) {} 
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
     Kind getTreeKind() { return Kind::MEM; }
     void accept(Visitor &v) { v.visit(this); }
 }; 
@@ -276,7 +292,11 @@ class Call : public Exp {
     string id;
     Exp *obj;
     std::vector<tree::Exp*> *args;
+<<<<<<< HEAD
     Call(Type t, string id, Exp *obj, std::vector<tree::Exp*> *args) : 
+=======
+    Call(tree::Type t, string id, tree::Exp *obj, std::vector<tree::Exp*> *args) : 
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
       Exp(t), id(id), obj(obj), args(args) {}
     Kind getTreeKind() { return Kind::CALL; }
     void accept(Visitor &v) { v.visit(this); }
@@ -286,7 +306,11 @@ class ExtCall : public Exp {
   public:
     string extfun;
     std::vector<tree::Exp*> *args;
+<<<<<<< HEAD
     ExtCall(Type t, string extfun, std::vector<tree::Exp*> *args) : 
+=======
+    ExtCall(tree::Type t, string extfun, std::vector<tree::Exp*> *args) : 
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
       Exp(t), extfun(extfun), args(args) {}
     Kind getTreeKind() { return Kind::EXTCALL; }
     void accept(Visitor &v) { v.visit(this); }

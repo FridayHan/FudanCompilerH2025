@@ -6,11 +6,17 @@
 #include "semant.hh"
 #include "temp.hh"
 #include "treep.hh"
+<<<<<<< HEAD
+=======
+#include "tr_exp.hh"
+#include "config.hh"
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 
 using namespace std;
 //using namespace fdmj;
 //using namespace tree;
 
+<<<<<<< HEAD
 #define ClassDeclList vector<fdmj::ClassDecl*>
 #define VarDeclList vector<fdmj::VarDecl*>
 
@@ -22,6 +28,22 @@ tree::Program* ast2tree(fdmj::Program* prog, AST_Semant_Map* semant_map);
 Class_table* generate_class_table(ClassDeclList* cdl);
 Var_table* generate_var_table(VarDeclList* vdl);
 
+=======
+//forward declaration
+class Class_table;
+class Method_var_table;
+class Patch_list;
+class ASTToTreeVisitor;
+
+tree::Program* ast2tree(fdmj::Program* prog, AST_Semant_Map* semant_map);
+Class_table* generate_class_table(AST_Semant_Map* semant_map);
+Method_var_table* generate_method_var_table(string class_name, string method_name, Name_Maps* nm, Temp_map* tm);
+
+//class table is to map each class var and method to an address offset
+//this uses a "universal class" method, i.e., all the classes use the 
+//same class table, with all the possible vars and methods of all classes
+//listed in the same record layout.
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 class Class_table {
 public:
      map<string, int> var_pos_map;
@@ -42,6 +64,7 @@ public:
      }
 };
 
+<<<<<<< HEAD
 class Var_table {
 public:
      map<string, tree::Temp*> *var_temp_map;
@@ -49,15 +72,35 @@ public:
      Var_table() {
           var_temp_map = new map<string, tree::Temp*>();
           var_type_map = new map<string, fdmj::Type*>();
+=======
+//For each method, there is a var table, including formal and local var.
+//(if a method local has a conflict in var name with formal, then local var
+//is used (ignore the formal))
+//Hence, local var will override formal in the Method_var_table.
+//Note: each local var and formal has a type as well (INT or PTR)
+//The return of a method is also taken as a formal, with a special name _^return^_method_name.
+class Method_var_table {
+public:
+     map<string, tree::Temp*> *var_temp_map;
+     map<string, tree::Type> *var_type_map;
+     Method_var_table() {
+          var_temp_map = new map<string, tree::Temp*>();
+          var_type_map = new map<string, tree::Type>();
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
      };
      tree::Temp* get_var_temp(string var_name) {
           return var_temp_map->at(var_name);
      }
+<<<<<<< HEAD
      fdmj::Type* get_var_type(string var_name) {
+=======
+     tree::Type get_var_type(string var_name) {
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
           return var_type_map->at(var_name);
      }
 };
 
+<<<<<<< HEAD
 class Patch_list {
 public:
      vector<tree::Label*> *true_patch_list;
@@ -107,6 +150,18 @@ public:
      }
 
      tree::Tree* getTree() { return visit_result; }
+=======
+class ASTToTreeVisitor : public fdmj::AST_Visitor {
+public:
+     tree::Tree *visit_tree_result = nullptr;
+     //** Here add some "visitor-level members" */
+
+     ~ASTToTreeVisitor() { }
+
+     ASTToTreeVisitor() { }
+
+     tree::Tree* getTree() { return visit_tree_result; } //return the tree from a single visit (program returns a single tree)
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
      /*
      T_tree* getTree() { return visit_result_node; }
      Temp_map* getTempMap() { return visitor_temp_map; }
@@ -149,5 +204,9 @@ public:
      void visit(fdmj::IntExp* node) override;
 };
 
+<<<<<<< HEAD
 
 #endif
+=======
+#endif
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56

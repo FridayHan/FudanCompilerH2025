@@ -6,6 +6,7 @@ build/
 *.d
 *.irp
 *.out
+*.out
 
 # Compiled Object files
 *.slo
