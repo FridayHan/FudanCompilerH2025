@@ -75,7 +75,7 @@
 %token<i> NONNEGATIVEINT
 %token<s> IDENTIFIER
 %token '(' ')' '[' ']' '{' '}' '=' ',' ';' '.' 
-%token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR NOT
+%token ADD MINUS TIMES DIVIDE UMINUS EQ NE LT LE GT GE AND OR NOT
 
 %left OR
 %left AND
@@ -83,16 +83,19 @@
 %left LT LE GT GE
 %left ADD MINUS
 %left TIMES DIVIDE
-%right '-'
-%right '!'
-%left '.' '[' '('
+%right UMINUS
+%right NOT
+%left '.'
+%left '[' ']'
+%left '(' ')'
 %nonassoc IFX
 %nonassoc ELSE
 
 //non-terminals, need type information only (not tokens)
-%type <intExp> INTEXP
-%type <intExpList> INTEXPLIST
-%type <intExpList> INTEXPLISTREST
+%type <intExp> NUM
+%type <intExp> CONST
+%type <intExpList> CONSTLIST
+%type <intExpList> CONSTREST
 %type <idExp> ID
 // %type <opExp> OPEXP
 // %type <boolExp> BOOLEXP
@@ -111,16 +114,60 @@
 %type <stmList> STMLIST
 %type <exp> EXP
 %type <expList> EXPLIST
+%type <expList> EXPREST
 
 %start PROG
 %expect 0
 
 %%
 
-INTEXP: NONNEGATIVEINT
+NUM: NONNEGATIVEINT
   {
     DEBUG_PRINT2("NonNegativeInt: ", $1);
     $$ = new IntExp(p, $1);
+  }
+  ;
+
+CONST: NUM
+  {
+    DEBUG_PRINT("Const");
+    $$ = $1;
+  }
+  |
+  MINUS NUM %prec UMINUS
+  {
+    DEBUG_PRINT("Negative Const");
+    $$ = new IntExp(p, -$2->val);
+  }
+  ;
+
+CONSTLIST: /* empty */
+  {
+    DEBUG_PRINT("ConstList empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  CONST CONSTREST
+  {
+    DEBUG_PRINT("Const ConstList");
+    vector<IntExp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+CONSTREST: /* empty */
+  {
+    DEBUG_PRINT("ConstRest empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  ',' CONST CONSTREST
+  {
+    DEBUG_PRINT("ConstRest");
+    vector<IntExp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
   }
   ;
 
@@ -253,36 +300,6 @@ ID: IDENTIFIER
 //   }
 //   ;
 
-INTEXPLIST: /* empty */
-  {
-    DEBUG_PRINT("IntExpList empty");
-    $$ = new vector<IntExp*>();
-  }
-  |
-  INTEXP INTEXPLISTREST
-  {
-    DEBUG_PRINT("IntExp IntExpList");
-    vector<IntExp*> *v = $2;
-    v->insert(v->begin(), $1);
-    $$ = v;
-  }
-  ;
-
-INTEXPLISTREST: /* empty */
-  {
-    DEBUG_PRINT("IntExpListRest empty");
-    $$ = new vector<IntExp*>();
-  }
-  |
-  ',' INTEXP INTEXPLISTREST
-  {
-    DEBUG_PRINT("IntExpListRest");
-    vector<IntExp*> *v = $3;
-    v->insert(v->begin(), $2);
-    $$ = v;
-  }
-  ;
-
 PROG: MAINMETHOD CLASSDECLLIST
   { 
     DEBUG_PRINT("Program");
@@ -352,7 +369,7 @@ VARDECL: CLASS ID ID ';'
     $$ = new VarDecl(p, new Type(p), $2);
   }
   |
-  INT ID '=' INTEXP ';'
+  INT ID '=' CONST ';'
   {
     DEBUG_PRINT("Int VarDecl with initialization");
     $$ = new VarDecl(p, new Type(p), $2, $4);
@@ -364,22 +381,22 @@ VARDECL: CLASS ID ID ';'
     $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4);
   }
   |
-  INT '[' ']' ID '=' '{' INTEXPLIST '}' ';'
+  INT '[' ']' ID '=' '{' CONSTLIST '}' ';'
   {
     DEBUG_PRINT("Array VarDecl with initialization");
     $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7);
   }
   |
-  INT '[' NONNEGATIVEINT ']' ID ';'
+  INT '[' NUM ']' ID ';'
   {
     DEBUG_PRINT("Fixed-size Array VarDecl");
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), $5);
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, $3), $5);
   }
   |
-  INT '[' NONNEGATIVEINT ']' ID '=' '{' INTEXPLIST '}' ';'
+  INT '[' NUM ']' ID '=' '{' CONSTLIST '}' ';'
   {
     DEBUG_PRINT("Fixed-size Array VarDecl with initialization");
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), $5, $8);
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, $3), $5, $8);
   }
   ;
 
@@ -567,24 +584,38 @@ EXPLIST: /* empty */
     $$ = new vector<Exp*>();
   }
   |
-  EXP EXPLIST
+  EXP EXPREST
   {
-    DEBUG_PRINT("Exp ExpList");
+    DEBUG_PRINT("Exp ExpRest");
     vector<Exp*> *v = $2;
     v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
 
-EXP: NONNEGATIVEINT
+EXPREST: /* empty */
   {
-    DEBUG_PRINT("NonNegativeInt Exp");
-    $$ = new IntExp(p, $1);
+    DEBUG_PRINT("ExpRest empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  ',' EXP EXPREST
+  {
+    DEBUG_PRINT("ExpRest");
+    vector<Exp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+
+EXP: NUM
+  {
+    DEBUG_PRINT("IntExp Exp");
+    $$ = $1;
   }
   |
   TRUE
   {
-    DEBUG_PRINT("True Exp");
+    DEBUG_PRINT("Truemr Exp");
     $$ = new BoolExp(p, true);
   }
   |
@@ -702,13 +733,13 @@ EXP: NONNEGATIVEINT
     $$ = new BinaryOp(p, $1, new OpExp(p, ">="), $3);
   }
   |
-  '!' EXP
+  NOT EXP
   {
     DEBUG_PRINT("Not Exp");
     $$ = new UnaryOp(p, new OpExp(p, "!"), $2);
   }
   |
-  '-' EXP
+  MINUS EXP %prec UMINUS
   {
     DEBUG_PRINT("Negate Exp");
     $$ = new UnaryOp(p, new OpExp(p, "-"), $2);
