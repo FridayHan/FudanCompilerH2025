@@ -20,6 +20,19 @@
   using namespace fdmj;
 }
 
+%{
+#include <iostream>
+#include <string>
+
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) do { std::cerr << msg << std::endl; } while (0)
+#define DEBUG_PRINT2(msg, val) do { std::cerr << msg << " " << val << std::endl; } while (0)
+#else
+#define DEBUG_PRINT(msg) do { } while (0)
+#define DEBUG_PRINT2(msg, val) do { } while (0)
+#endif
+%}
+
 %define api.namespace {fdmj}
 %define api.parser.class {ASTParser}
 %define api.value.type {AST_YYSTYPE}
@@ -66,22 +79,23 @@
 
 %left OR
 %left AND
-%right NOT
-%left EQ NE LT LE GT GE
+%left EQ NE
+%left LT LE GT GE
 %left ADD MINUS
 %left TIMES DIVIDE
-
-
-
-
+%right '-'
+%right '!'
+%left '.' '[' '('
+%nonassoc IFX
+%nonassoc ELSE
 
 //non-terminals, need type information only (not tokens)
 %type <intExp> INTEXP
 %type <intExpList> INTEXPLIST
 %type <intExpList> INTEXPLISTREST
 %type <idExp> ID
-%type <opExp> OPEXP
-%type <boolExp> BOOLEXP
+// %type <opExp> OPEXP
+// %type <boolExp> BOOLEXP
 %type <program> PROG
 %type <mainMethod> MAINMETHOD
 %type <classDecl> CLASSDECL
@@ -105,157 +119,149 @@
 
 INTEXP: NONNEGATIVEINT
   {
-#ifdef DEBUG
-    cerr << "NonNegativeInt: " << $1 << endl;
-#endif
+    DEBUG_PRINT2("NonNegativeInt: ", $1);
     $$ = new IntExp(p, $1);
   }
   ;
 
 ID: IDENTIFIER
   {
-#ifdef DEBUG
-    cerr << "Identifier: " << $1 << endl;
-#endif
+    DEBUG_PRINT2("Identifier: ", $1);
     $$ = new IdExp(p, $1);
   }
   ;
 
-OPEXP: ADD
-  {
-#ifdef DEBUG
-    cerr << "Operator: +" << endl;
-#endif
-    $$ = new OpExp(p, "+");
-  }
-  |
-  MINUS
-  {
-#ifdef DEBUG
-    cerr << "Operator: -" << endl;
-#endif
-    $$ = new OpExp(p, "-");
-  }
-  |
-  TIMES
-  {
-#ifdef DEBUG
-    cerr << "Operator: *" << endl;
-#endif
-    $$ = new OpExp(p, "*");
-  }
-  |
-  DIVIDE
-  {
-#ifdef DEBUG
-    cerr << "Operator: /" << endl;
-#endif
-    $$ = new OpExp(p, "/");
-  }
-  |
-  EQ
-  {
-#ifdef DEBUG
-    cerr << "Operator: ==" << endl;
-#endif
-    $$ = new OpExp(p, "==");
-  }
-  |
-  NE
-  {
-#ifdef DEBUG
-    cerr << "Operator: !=" << endl;
-#endif
-    $$ = new OpExp(p, "!=");
-  }
-  |
-  LT
-  {
-#ifdef DEBUG
-    cerr << "Operator: <" << endl;
-#endif
-    $$ = new OpExp(p, "<");
-  }
-  |
-  LE
-  {
-#ifdef DEBUG
-    cerr << "Operator: <=" << endl;
-#endif
-    $$ = new OpExp(p, "<=");
-  }
-  |
-  GT
-  {
-#ifdef DEBUG
-    cerr << "Operator: >" << endl;
-#endif
-    $$ = new OpExp(p, ">");
-  }
-  |
-  GE
-  {
-#ifdef DEBUG
-    cerr << "Operator: >=" << endl;
-#endif
-    $$ = new OpExp(p, ">=");
-  }
-  |
-  AND
-  {
-#ifdef DEBUG
-    cerr << "Operator: &&" << endl;
-#endif
-    $$ = new OpExp(p, "&&");
-  }
-  |
-  OR
-  {
-#ifdef DEBUG
-    cerr << "Operator: ||" << endl;
-#endif
-    $$ = new OpExp(p, "||");
-  }
-  |
-  NOT
-  {
-#ifdef DEBUG
-    cerr << "Operator: !" << endl;
-#endif
-    $$ = new OpExp(p, "!");
-  }
-  ;
+// OPEXP: ADD
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: +" << endl;
+// #endif
+//     $$ = new OpExp(p, "+");
+//   }
+//   |
+//   MINUS
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: -" << endl;
+// #endif
+//     $$ = new OpExp(p, "-");
+//   }
+//   |
+//   TIMES
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: *" << endl;
+// #endif
+//     $$ = new OpExp(p, "*");
+//   }
+//   |
+//   DIVIDE
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: /" << endl;
+// #endif
+//     $$ = new OpExp(p, "/");
+//   }
+//   |
+//   EQ
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: ==" << endl;
+// #endif
+//     $$ = new OpExp(p, "==");
+//   }
+//   |
+//   NE
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: !=" << endl;
+// #endif
+//     $$ = new OpExp(p, "!=");
+//   }
+//   |
+//   LT
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: <" << endl;
+// #endif
+//     $$ = new OpExp(p, "<");
+//   }
+//   |
+//   LE
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: <=" << endl;
+// #endif
+//     $$ = new OpExp(p, "<=");
+//   }
+//   |
+//   GT
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: >" << endl;
+// #endif
+//     $$ = new OpExp(p, ">");
+//   }
+//   |
+//   GE
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: >=" << endl;
+// #endif
+//     $$ = new OpExp(p, ">=");
+//   }
+//   |
+//   AND
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: &&" << endl;
+// #endif
+//     $$ = new OpExp(p, "&&");
+//   }
+//   |
+//   OR
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: ||" << endl;
+// #endif
+//     $$ = new OpExp(p, "||");
+//   }
+//   |
+//   NOT
+//   {
+// #ifdef DEBUG
+//     cerr << "Operator: !" << endl;
+// #endif
+//     $$ = new OpExp(p, "!");
+//   }
+//   ;
 
-BOOLEXP: TRUE
-  {
-#ifdef DEBUG
-    cerr << "Boolean: true" << endl;
-#endif
-    $$ = new BoolExp(p, true);
-  }
-  |
-  FALSE
-  {
-#ifdef DEBUG
-    cerr << "Boolean: false" << endl;
-#endif
-    $$ = new BoolExp(p, false);
-  }
-  ;
+// BOOLEXP: TRUE
+//   {
+// #ifdef DEBUG
+//     cerr << "Boolean: true" << endl;
+// #endif
+//     $$ = new BoolExp(p, true);
+//   }
+//   |
+//   FALSE
+//   {
+// #ifdef DEBUG
+//     cerr << "Boolean: false" << endl;
+// #endif
+//     $$ = new BoolExp(p, false);
+//   }
+//   ;
 
 INTEXPLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "IntExpList empty" << endl;
-#endif
+    DEBUG_PRINT("IntExpList empty");
     $$ = new vector<IntExp*>();
   }
   |
   INTEXP INTEXPLISTREST
   {
-#ifdef DEBUG
-    cerr << "IntExp IntExpList" << endl;
-#endif
+    DEBUG_PRINT("IntExp IntExpList");
     vector<IntExp*> *v = $2;
     v->insert(v->begin(), $1);
     $$ = v;
@@ -264,17 +270,13 @@ INTEXPLIST: /* empty */
 
 INTEXPLISTREST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "IntExpListRest empty" << endl;
-#endif
+    DEBUG_PRINT("IntExpListRest empty");
     $$ = new vector<IntExp*>();
   }
   |
   ',' INTEXP INTEXPLISTREST
   {
-#ifdef DEBUG
-    cerr << "IntExpListRest" << endl;
-#endif
+    DEBUG_PRINT("IntExpListRest");
     vector<IntExp*> *v = $3;
     v->insert(v->begin(), $2);
     $$ = v;
@@ -283,200 +285,154 @@ INTEXPLISTREST: /* empty */
 
 PROG: MAINMETHOD CLASSDECLLIST
   { 
-#ifdef DEBUG
-    cerr << "Program" << endl;
-#endif
+    DEBUG_PRINT("Program");
     result->root = new Program(p, $1, $2);
   }
   ;
 
 MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' VARDECLLIST STMLIST '}'
   {
-#ifdef DEBUG
-    cerr << "MainMethod" << endl;
-#endif
+    DEBUG_PRINT("MainMethod");
     $$ = new MainMethod(p, $7, $8);
   }
   ;
 
 CLASSDECLLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "ClassDeclList empty" << endl;
-#endif
+    DEBUG_PRINT("ClassDeclList empty");
     $$ = new vector<ClassDecl*>();
   }
   |
   CLASSDECL CLASSDECLLIST
   {
-#ifdef DEBUG
-    cerr << "ClassDecl ClassDeclList" << endl;
-#endif
+    DEBUG_PRINT("ClassDecl ClassDeclList");
     vector<ClassDecl*> *v = $2;
     v->push_back($1);
     $$ = v;
   }
   ;
 
-CLASSDECL: PUBLIC CLASS IDENTIFIER '{' VARDECLLIST METHODDECLLIST '}'
+CLASSDECL: PUBLIC CLASS ID '{' VARDECLLIST METHODDECLLIST '}'
   {
-#ifdef DEBUG
-    cerr << "ClassDecl" << endl;
-#endif
+    DEBUG_PRINT("ClassDecl");
     $$ = new ClassDecl(p, $3, nullptr, $5, $6);
   }
   |
-  PUBLIC CLASS IDENTIFIER EXTENDS IDENTIFIER '{' VARDECLLIST METHODDECLLIST '}'
+  PUBLIC CLASS ID EXTENDS ID '{' VARDECLLIST METHODDECLLIST '}'
   {
-#ifdef DEBUG
-    cerr << "ClassDecl with extends" << endl;
-#endif
+    DEBUG_PRINT("ClassDecl with extends");
     $$ = new ClassDecl(p, $3, $5, $7, $8);
   }
   ;
 
 VARDECLLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "VarDeclList empty" << endl;
-#endif
+    DEBUG_PRINT("VarDeclList empty");
     $$ = new vector<VarDecl*>();
   }
   |
   VARDECL VARDECLLIST
   {
-#ifdef DEBUG
-    cerr << "VarDecl VarDeclList" << endl;
-#endif
+    DEBUG_PRINT("VarDecl VarDeclList");
     vector<VarDecl*> *v = $2;
     v->push_back($1);
     $$ = v;
   }
   ;
 
-VARDECL: CLASS IDENTIFIER IDENTIFIER ';'
+VARDECL: CLASS ID ID ';'
   {
-#ifdef DEBUG
-    cerr << "Class VarDecl" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, new IdExp(p, $2)), new IdExp(p, $3));
+    DEBUG_PRINT("Class VarDecl");
+    $$ = new VarDecl(p, new Type(p, $2), $3);
   }
   |
-  INT IDENTIFIER ';'
+  INT ID ';'
   {
-#ifdef DEBUG
-    cerr << "Int VarDecl" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::INT), new IdExp(p, $2));
+    DEBUG_PRINT("Int VarDecl");
+    $$ = new VarDecl(p, new Type(p), $2);
   }
   |
-  INT IDENTIFIER '=' INTEXP ';'
+  INT ID '=' INTEXP ';'
   {
-#ifdef DEBUG
-    cerr << "Int VarDecl with initialization" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::INT), new IdExp(p, $2), $4);
+    DEBUG_PRINT("Int VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p), $2, $4);
   }
   |
-  INT '[' ']' IDENTIFIER ';'
+  INT '[' ']' ID ';'
   {
-#ifdef DEBUG
-    cerr << "Array VarDecl" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), new IdExp(p, $4));
+    DEBUG_PRINT("Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4);
   }
   |
-  INT '[' ']' IDENTIFIER '=' '{' INTEXPLIST '}' ';'
+  INT '[' ']' ID '=' '{' INTEXPLIST '}' ';'
   {
-#ifdef DEBUG
-    cerr << "Array VarDecl with initialization" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), new IdExp(p, $4), $7);
+    DEBUG_PRINT("Array VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7);
   }
   |
-  INT '[' NONNEGATIVEINT ']' IDENTIFIER ';'
+  INT '[' NONNEGATIVEINT ']' ID ';'
   {
-#ifdef DEBUG
-    cerr << "Fixed-size Array VarDecl" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), new IdExp(p, $5));
+    DEBUG_PRINT("Fixed-size Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), $5);
   }
   |
-  INT '[' NONNEGATIVEINT ']' IDENTIFIER '=' '{' INTEXPLIST '}' ';'
+  INT '[' NONNEGATIVEINT ']' ID '=' '{' INTEXPLIST '}' ';'
   {
-#ifdef DEBUG
-    cerr << "Fixed-size Array VarDecl with initialization" << endl;
-#endif
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), new IdExp(p, $5), $8);
+    DEBUG_PRINT("Fixed-size Array VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, $3)), $5, $8);
   }
   ;
 
 METHODDECLLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "MethodDeclList empty" << endl;
-#endif
+    DEBUG_PRINT("MethodDeclList empty");
     $$ = new vector<MethodDecl*>();
   }
   |
   METHODDECL METHODDECLLIST
   {
-#ifdef DEBUG
-    cerr << "MethodDecl MethodDeclList" << endl;
-#endif
+    DEBUG_PRINT("MethodDecl MethodDeclList");
     vector<MethodDecl*> *v = $2;
     v->push_back($1);
     $$ = v;
   }
   ;
 
-METHODDECL: PUBLIC TYPE IDENTIFIER '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
+METHODDECL: PUBLIC TYPE ID '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
   {
-#ifdef DEBUG
-    cerr << "MethodDecl" << endl;
-#endif
+    DEBUG_PRINT("MethodDecl");
     $$ = new MethodDecl(p, $2, $3, $5, $8, $9);
   }
   ;
 
-TYPE: CLASS IDENTIFIER
+TYPE: CLASS ID
   {
-#ifdef DEBUG
-    cerr << "Class Type" << endl;
-#endif
-    $$ = new Type(p, TypeKind::CLASS, new IdExp(p, $2), nullptr);
+    DEBUG_PRINT("Class Type");
+    $$ = new Type(p, TypeKind::CLASS, $2, nullptr);
   }
   |
   INT
   {
-#ifdef DEBUG
-    cerr << "Int Type" << endl;
-#endif
-    $$ = new Type(p, TypeKind::INT);
+    DEBUG_PRINT("Int Type");
+    $$ = new Type(p);
   }
   |
   INT '[' ']'
   {
-#ifdef DEBUG
-    cerr << "Array Type" << endl;
-#endif
+    DEBUG_PRINT("Array Type");
     $$ = new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0));
   }
   ;
 
 FORMALLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "FormalList empty" << endl;
-#endif
+    DEBUG_PRINT("FormalList empty");
     $$ = new vector<Formal*>();
   }
   |
-  TYPE IDENTIFIER FORMALREST
+  TYPE ID FORMALREST
   {
-#ifdef DEBUG
-    cerr << "FormalList" << endl;
-#endif
+    DEBUG_PRINT("FormalList");
     vector<Formal*> *v = $3;
     v->insert(v->begin(), new Formal(p, $1, $2));
     $$ = v;
@@ -485,17 +441,13 @@ FORMALLIST: /* empty */
 
 FORMALREST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "FormalRest empty" << endl;
-#endif
+    DEBUG_PRINT("FormalRest empty");
     $$ = new vector<Formal*>();
   }
   |
-  ',' TYPE IDENTIFIER FORMALREST
+  ',' TYPE ID FORMALREST
   {
-#ifdef DEBUG
-    cerr << "FormalRest" << endl;
-#endif
+    DEBUG_PRINT("FormalRest");
     vector<Formal*> *v = $4;
     v->insert(v->begin(), new Formal(p, $2, $3));
     $$ = v;
@@ -504,17 +456,13 @@ FORMALREST: /* empty */
 
 STMLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "StmList empty" << endl;
-#endif
+    DEBUG_PRINT("StmList empty");
     $$ = new vector<Stm*>();
   }
   |
   STM STMLIST
   {
-#ifdef DEBUG
-    cerr << "Stm StmList" << endl;
-#endif
+    DEBUG_PRINT("Stm Stmlist");
     vector<Stm*> *v = $2;
     v->push_back($1);
     rotate(v->begin(), v->end() - 1, v->end());
@@ -524,138 +472,104 @@ STMLIST: /* empty */
 
 STM: '{' STMLIST '}'
   {
-#ifdef DEBUG
-    cerr << "Block Stm" << endl;
-#endif
+    DEBUG_PRINT("Block Stm");
     $$ = new Nested(p, $2);
   }
   |
   IF '(' EXP ')' STM ELSE STM
   {
-#ifdef DEBUG
-    cerr << "If-Else Stm" << endl;
-#endif
+    DEBUG_PRINT("If-Else Stm");
     $$ = new If(p, $3, $5, $7);
   }
   |
-  IF '(' EXP ')' STM
+  IF '(' EXP ')' STM %prec IFX
   {
-#ifdef DEBUG
-    cerr << "If Stm" << endl;
-#endif
+    DEBUG_PRINT("If Stm");
     $$ = new If(p, $3, $5);
   }
   |
   WHILE '(' EXP ')' STM
   {
-#ifdef DEBUG
-    cerr << "While Stm" << endl;
-#endif
+    DEBUG_PRINT("While Stm");
     $$ = new While(p, $3, $5);
   }
   |
   WHILE '(' EXP ')' ';'
   {
-#ifdef DEBUG
-    cerr << "While Stm with empty body" << endl;
-#endif
+    DEBUG_PRINT("While Stm with empty body");
     $$ = new While(p, $3);
   }
   |
   EXP '=' EXP ';'
   {
-#ifdef DEBUG
-    cerr << "Assign Stm" << endl;
-#endif
+    DEBUG_PRINT("Assign Stm");
     $$ = new Assign(p, $1, $3);
   }
   |
-  EXP '.' IDENTIFIER '(' EXPLIST ')' ';'
+  EXP '.' ID '(' EXPLIST ')' ';'
   {
-#ifdef DEBUG
-    cerr << "Method Call Stm" << endl;
-#endif
+    DEBUG_PRINT("Method Call Stm");
     $$ = new CallStm(p, $1, $3, $5);
   }
   |
   CONTINUE ';'
   {
-#ifdef DEBUG
-    cerr << "Continue Stm" << endl;
-#endif
+    DEBUG_PRINT("Continue Stm");
     $$ = new Continue(p);
   }
   |
   BREAK ';'
   {
-#ifdef DEBUG
-    cerr << "Break Stm" << endl;
-#endif
+    DEBUG_PRINT("Break Stm");
     $$ = new Break(p);
   }
   |
   RETURN EXP ';'
   {
-#ifdef DEBUG
-    cerr << "Return Stm" << endl;
-#endif
+    DEBUG_PRINT("Return Stm");
     $$ = new Return(p, $2);
   }
   |
   PUTINT '(' EXP ')' ';'
   {
-#ifdef DEBUG
-    cerr << "PutInt Stm" << endl;
-#endif
+    DEBUG_PRINT("PutInt Stm");
     $$ = new PutInt(p, $3);
   }
   |
   PUTCH '(' EXP ')' ';'
   {
-#ifdef DEBUG
-    cerr << "PutCh Stm" << endl;
-#endif
+    DEBUG_PRINT("PutCh Stm");
     $$ = new PutCh(p, $3);
   }
   |
   PUTARRAY '(' EXP ',' EXP ')' ';'
   {
-#ifdef DEBUG
-    cerr << "PutArray Stm" << endl;
-#endif
+    DEBUG_PRINT("PutArray Stm");
     $$ = new PutArray(p, $3, $5);
   }
   |
   STARTTIME '(' ')' ';'
   {
-#ifdef DEBUG
-    cerr << "StartTime Stm" << endl;
-#endif
+    DEBUG_PRINT("StartTime Stm");
     $$ = new Starttime(p);
   }
   |
   STOPTIME '(' ')' ';'
   {
-#ifdef DEBUG
-    cerr << "StopTime Stm" << endl;
-#endif
+    DEBUG_PRINT("StopTime Stm");
     $$ = new Stoptime(p);
   }
   ;
 
 EXPLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "ExpList empty" << endl;
-#endif
+    DEBUG_PRINT("ExpList empty");
     $$ = new vector<Exp*>();
   }
   |
   EXP EXPLIST
   {
-#ifdef DEBUG
-    cerr << "Exp ExpList" << endl;
-#endif
+    DEBUG_PRINT("Exp ExpList");
     vector<Exp*> *v = $2;
     v->insert(v->begin(), $1);
     $$ = v;
@@ -664,225 +578,169 @@ EXPLIST: /* empty */
 
 EXP: NONNEGATIVEINT
   {
-#ifdef DEBUG
-    cerr << "NonNegativeInt Exp" << endl;
-#endif
+    DEBUG_PRINT("NonNegativeInt Exp");
     $$ = new IntExp(p, $1);
   }
   |
   TRUE
   {
-#ifdef DEBUG
-    cerr << "True Exp" << endl;
-#endif
+    DEBUG_PRINT("True Exp");
     $$ = new BoolExp(p, true);
   }
   |
   FALSE
   {
-#ifdef DEBUG
-    cerr << "False Exp" << endl;
-#endif
+    DEBUG_PRINT("False Exp");
     $$ = new BoolExp(p, false);
   }
   |
   LENGTH '(' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "Length Exp" << endl;
-#endif
+    DEBUG_PRINT("Length Exp");
     $$ = new Length(p, $3);
   }
   |
   GETINT '(' ')'
   {
-#ifdef DEBUG
-    cerr << "GetInt Exp" << endl;
-#endif
+    DEBUG_PRINT("GetInt Exp");
     $$ = new GetInt(p);
   }
   |
   GETCH '(' ')'
   {
-#ifdef DEBUG
-    cerr << "GetCh Exp" << endl;
-#endif
+    DEBUG_PRINT("GetCh Exp");
     $$ = new GetCh(p);
   }
   |
   GETARRAY '(' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "GetArray Exp" << endl;
-#endif
+    DEBUG_PRINT("GetArray Exp");
     $$ = new GetArray(p, $3);
   }
   |
-  IDENTIFIER
+  ID
   {
-#ifdef DEBUG
-    cerr << "Identifier Exp" << endl;
-#endif
-    $$ = new IdExp(p, $1);
+    DEBUG_PRINT("Identifier Exp");
+    $$ = $1;
   }
   |
   THIS
   {
-#ifdef DEBUG
-    cerr << "This Exp" << endl;
-#endif
+    DEBUG_PRINT("This Exp");
     $$ = new This(p);
   }
   |
   EXP ADD EXP
   {
-#ifdef DEBUG
-    cerr << "Add Exp" << endl;
-#endif
+    DEBUG_PRINT("Add Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "+"), $3);
   }
   |
   EXP MINUS EXP
   {
-#ifdef DEBUG
-    cerr << "Minus Exp" << endl;
-#endif
+    DEBUG_PRINT("Minus Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "-"), $3);
   }
   |
   EXP TIMES EXP
   {
-#ifdef DEBUG
-    cerr << "Times Exp" << endl;
-#endif
+    DEBUG_PRINT("Times Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "*"), $3);
   }
   |
   EXP DIVIDE EXP
   {
-#ifdef DEBUG
-    cerr << "Divide Exp" << endl;
-#endif
+    DEBUG_PRINT("Divide Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "/"), $3);
   }
   |
   EXP AND EXP
   {
-#ifdef DEBUG
-    cerr << "And Exp" << endl;
-#endif
+    DEBUG_PRINT("And Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "&&"), $3);
   }
   |
   EXP OR EXP
   {
-#ifdef DEBUG
-    cerr << "Or Exp" << endl;
-#endif
+    DEBUG_PRINT("Or Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "||"), $3);
   }
   |
   EXP EQ EXP
   {
-#ifdef DEBUG
-    cerr << "Equal Exp" << endl;
-#endif
+    DEBUG_PRINT("Equal Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "=="), $3);
   }
   |
   EXP NE EXP
   {
-#ifdef DEBUG
-    cerr << "Not Equal Exp" << endl;
-#endif
+    DEBUG_PRINT("Not Equal Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "!="), $3);
   }
   |
   EXP LT EXP
   {
-#ifdef DEBUG
-    cerr << "Less Than Exp" << endl;
-#endif
+    DEBUG_PRINT("Less Than Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "<"), $3);
   }
   |
   EXP LE EXP
   {
-#ifdef DEBUG
-    cerr << "Less Equal Exp" << endl;
-#endif
+    DEBUG_PRINT("Less Equal Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, "<="), $3);
   }
   |
   EXP GT EXP
   {
-#ifdef DEBUG
-    cerr << "Greater Than Exp" << endl;
-#endif
+    DEBUG_PRINT("Greater Than Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, ">"), $3);
   }
   |
   EXP GE EXP
   {
-#ifdef DEBUG
-    cerr << "Greater Equal Exp" << endl;
-#endif
+    DEBUG_PRINT("Greater Equal Exp");
     $$ = new BinaryOp(p, $1, new OpExp(p, ">="), $3);
   }
   |
   '!' EXP
   {
-#ifdef DEBUG
-    cerr << "Not Exp" << endl;
-#endif
+    DEBUG_PRINT("Not Exp");
     $$ = new UnaryOp(p, new OpExp(p, "!"), $2);
   }
   |
   '-' EXP
   {
-#ifdef DEBUG
-    cerr << "Negate Exp" << endl;
-#endif
+    DEBUG_PRINT("Negate Exp");
     $$ = new UnaryOp(p, new OpExp(p, "-"), $2);
   }
   |
   '(' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "Parenthesized Exp" << endl;
-#endif
+    DEBUG_PRINT("Parenthesized Exp");
     $$ = $2;
   }
   |
   '(' '{' STMLIST '}' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "Block Exp" << endl;
-#endif
+    DEBUG_PRINT("Block Exp");
     $$ = new Esc(p, $3, $5);
   }
   |
-  EXP '.' IDENTIFIER
+  EXP '.' ID
   {
-#ifdef DEBUG
-    cerr << "Field Access Exp" << endl;
-#endif
+    DEBUG_PRINT("Field Access Exp");
     $$ = new ClassVar(p, $1, $3);
   }
   |
-  EXP '.' IDENTIFIER '(' EXPLIST ')'
+  EXP '.' ID '(' EXPLIST ')'
   {
-#ifdef DEBUG
-    cerr << "Method Call Exp" << endl;
-#endif
+    DEBUG_PRINT("Method Call Exp");
     $$ = new CallExp(p, $1, $3, $5);
   }
   |
   EXP '[' EXP ']'
   {
-#ifdef DEBUG
-    cerr << "Array Access Exp" << endl;
-#endif
+    DEBUG_PRINT("Array Access Exp");
     $$ = new ArrayExp(p, $1, $3);
   }
   ;
