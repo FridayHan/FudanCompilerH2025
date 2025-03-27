@@ -384,7 +384,7 @@ VARDECL: CLASS ID ID ';'
   INT '[' ']' ID '=' '{' CONSTLIST '}' ';'
   {
     DEBUG_PRINT("Array VarDecl with initialization");
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7);
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7); // TODO: 使用 $7->size() 即可获取初始化 vector 的长度
   }
   |
   INT '[' NUM ']' ID ';'

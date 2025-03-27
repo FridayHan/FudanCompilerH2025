@@ -1,6 +1,7 @@
 public int main() {
   int a = 1;
-  a = 3 + 5;
-  // int b = 4;
-  return b;
+  int b = 4;
+  int[5] c = {1, 2, 3};
+  a = true;
+  return a;
 }

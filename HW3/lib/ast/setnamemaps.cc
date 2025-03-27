@@ -40,6 +40,34 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
   if (node == nullptr) {
     return;
   }
+  
+  // 将MainMethod当成一个特殊的class，命名为"MainClass"
+  string class_name = "MainClass";
+  string method_name = "^_main";
+  
+  // 设置当前上下文
+  current_class = class_name;
+  current_method = method_name;
+  
+  // 添加类和方法到名称映射
+  name_maps->add_class(class_name);
+  name_maps->add_method(class_name, method_name);
+  
+  // 初始化形参列表
+  current_formal_list.clear();
+  
+  // 为主方法添加一个返回值形参（视为void类型）
+  string return_var_name = "^_method_return";
+  Type* void_type = new Type(node->getPos());  // 默认类型为INT，这里用作void
+  Formal* return_formal = new Formal(node->getPos(), void_type, new IdExp(node->getPos(), return_var_name));
+  
+  // 添加到方法形参中
+  name_maps->add_method_formal(class_name, method_name, return_var_name, return_formal);
+  current_formal_list.push_back(return_var_name);
+  
+  // 添加方法形参列表
+  name_maps->add_method_formal_list(class_name, method_name, current_formal_list);
+  
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
       vd->accept(*this);
@@ -50,6 +78,10 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
       s->accept(*this);
     }
   }
+  
+  // 访问完毕后重置上下文
+  current_class = "";
+  current_method = "";
 }
 
 void AST_Name_Map_Visitor::visit(ClassDecl *node) {
@@ -167,6 +199,16 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
     for (auto f : *(node->fl)) {
       f->accept(*this);
     }
+  }
+  
+  // 添加方法返回值作为特殊形参
+  string return_var_name = "^_method_return";
+  if (node->type != nullptr) {
+    // 创建代表返回值的形参
+    Formal* return_formal = new Formal(node->getPos(), node->type->clone(), new IdExp(node->getPos(), return_var_name));
+    // 添加到方法形参映射
+    name_maps->add_method_formal(current_class, method_name, return_var_name, return_formal);
+    current_formal_list.push_back(return_var_name);
   }
   
   // 添加方法形参列表
