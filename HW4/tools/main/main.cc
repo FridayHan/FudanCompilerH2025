@@ -2,6 +2,10 @@
 #include <fstream>
 #include <cstring>
 #include <string>
+<<<<<<< HEAD
+=======
+#include "config.hh"
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 #include "ASTheader.hh"
 #include "FDMJAST.hh"
 #include "xml2ast.hh"
@@ -11,15 +15,21 @@
 #include "semant.hh"
 #include "ast2tree.hh"
 #include "tree2xml.hh"
+<<<<<<< HEAD
 #include "canon.hh"
+=======
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 
 using namespace std;
 using namespace fdmj;
 using namespace tree;
 using namespace tinyxml2;
 
+<<<<<<< HEAD
 tree::Program* generate_a_testIR(); //forward declaration
 
+=======
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 int main(int argc, const char *argv[]) {
     string file;
 
@@ -32,9 +42,14 @@ int main(int argc, const char *argv[]) {
     file = argv[argc - 1];
 
     // boilerplate output filenames (used throughout the compiler pipeline)
+<<<<<<< HEAD
     string file_ast = file + ".2.ast"; // ast in xml
     string file_irp = file + ".3.irp";
     string file_irp_canon = file + ".3-canon.irp";
+=======
+    string file_ast = file + ".2-semant.ast"; // ast in xml
+    string file_irp = file + ".3.irp";
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56
 
     cout << "------Reading AST from : " << file_ast << "------------" << endl;
     AST_Semant_Map *semant_map = new AST_Semant_Map();
@@ -43,6 +58,7 @@ int main(int argc, const char *argv[]) {
         cerr << "Error reading AST from: " << file_ast << endl;
         return EXIT_FAILURE;
     }
+<<<<<<< HEAD
     //semant_map->getNameMaps()->print();
     cout << "Converting AST to IR" << endl;
     //tree::Program *ir = ast2tree(root, semant_map);
@@ -93,3 +109,15 @@ tree::Program* generate_a_testIR() {
     fdl->push_back(fd);
     return new tree::Program(fdl);
 }
+=======
+    semant_map->getNameMaps()->print();
+    cout << "Converting AST to IR" << endl;
+    Compiler_Config::print_config();
+    tree::Program *ir = ast2tree(root, semant_map);
+    cout << "Saving IR (XML) to: " << file_irp << endl;
+    XMLDocument *x = tree2xml(ir);
+    x->SaveFile(file_irp.c_str());
+    cout << "-----Done---" << endl;
+    return EXIT_SUCCESS;
+}
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56

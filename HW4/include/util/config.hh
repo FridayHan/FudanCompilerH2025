@@ -32,6 +32,13 @@ public:
         } else
             return compiler_config.at(key);
     }
+<<<<<<< HEAD
 };
 
 #endif
+=======
+    static void print_config();
+};
+
+#endif
+>>>>>>> ef84cc3dd4881fc9e0bf651ed964c46e6c13de56

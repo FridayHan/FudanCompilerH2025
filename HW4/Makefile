@@ -29,6 +29,10 @@ handin:
 .PHONY: run run-one
 
 MAIN = $(BUILD_DIR)/tools/main/main
+PATCHDEMO = $(BUILD_DIR)/tools/patchdemo/patchdemo
+
+patchdemo: $(PATCHDEMO)
+	$(PATCHDEMO) "test/patchdemo" 
 
 run: $(MAIN)
 	cd $(CURDIR)/test && \
