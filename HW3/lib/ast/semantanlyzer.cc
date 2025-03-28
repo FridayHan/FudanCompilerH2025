@@ -14,9 +14,8 @@ using namespace fdmj;
 // TODO
 
 AST_Semant_Map* semant_analyze(Program* node) {
-    std::cout << "TODO" << std::endl;
     return nullptr;
-    // std::cerr << "Start Semantic Analysis" << std::endl;
+    std::cerr << "Start Semantic Analysis" << std::endl;
     // if (node == nullptr) {
     //     return nullptr;
     // }
