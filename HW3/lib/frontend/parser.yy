@@ -55,7 +55,8 @@
     #endif
 };
 
-%code {
+%code
+{
     namespace fdmj 
     {
         template<typename RHS>
@@ -75,7 +76,7 @@
 %token<i> NONNEGATIVEINT
 %token<s> IDENTIFIER
 %token '(' ')' '[' ']' '{' '}' '=' ',' ';' '.' 
-%token ADD MINUS TIMES DIVIDE UMINUS EQ NE LT LE GT GE AND OR NOT
+%token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR NOT
 
 %left OR
 %left AND
@@ -93,81 +94,37 @@
 
 //non-terminals, need type information only (not tokens)
 %type <intExp> NUM
+%type <idExp> ID
+%type <program> PROG
+%type <mainMethod> MAINMETHOD
+%type <varDeclList> VARDECLLIST
+%type <varDecl> VARDECL
 %type <intExp> CONST
 %type <intExpList> CONSTLIST
 %type <intExpList> CONSTREST
-%type <idExp> ID
-// %type <opExp> OPEXP
-// %type <boolExp> BOOLEXP
-%type <program> PROG
-%type <mainMethod> MAINMETHOD
-%type <classDecl> CLASSDECL
-%type <classDeclList> CLASSDECLLIST
-%type <type> TYPE
-%type <varDecl> VARDECL
-%type <varDeclList> VARDECLLIST
-%type <methodDecl> METHODDECL
-%type <methodDeclList> METHODDECLLIST
-%type <formalList> FORMALLIST
-%type <formalList> FORMALREST
-%type <stm> STM
 %type <stmList> STMLIST
+%type <stm> STM
 %type <exp> EXP
 %type <expList> EXPLIST
 %type <expList> EXPREST
+%type <classDeclList> CLASSDECLLIST
+%type <classDecl> CLASSDECL
+%type <methodDeclList> METHODDECLLIST
+%type <methodDecl> METHODDECL
+%type <type> TYPE
+%type <formalList> FORMALLIST
+%type <formalList> FORMALREST
+
 
 %start PROG
 %expect 0
 
 %%
-
+// Intermediate constructs
 NUM: NONNEGATIVEINT
   {
     DEBUG_PRINT2("NonNegativeInt: ", $1);
     $$ = new IntExp(p, $1);
-  }
-  ;
-
-CONST: NUM
-  {
-    DEBUG_PRINT("Const");
-    $$ = $1;
-  }
-  |
-  MINUS NUM %prec UMINUS
-  {
-    DEBUG_PRINT("Negative Const");
-    $$ = new IntExp(p, -$2->val);
-  }
-  ;
-
-CONSTLIST: /* empty */
-  {
-    DEBUG_PRINT("ConstList empty");
-    $$ = new vector<IntExp*>();
-  }
-  |
-  CONST CONSTREST
-  {
-    DEBUG_PRINT("Const ConstList");
-    vector<IntExp*> *v = $2;
-    v->insert(v->begin(), $1);
-    $$ = v;
-  }
-  ;
-
-CONSTREST: /* empty */
-  {
-    DEBUG_PRINT("ConstRest empty");
-    $$ = new vector<IntExp*>();
-  }
-  |
-  ',' CONST CONSTREST
-  {
-    DEBUG_PRINT("ConstRest");
-    vector<IntExp*> *v = $3;
-    v->insert(v->begin(), $2);
-    $$ = v;
   }
   ;
 
@@ -178,128 +135,7 @@ ID: IDENTIFIER
   }
   ;
 
-// OPEXP: ADD
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: +" << endl;
-// #endif
-//     $$ = new OpExp(p, "+");
-//   }
-//   |
-//   MINUS
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: -" << endl;
-// #endif
-//     $$ = new OpExp(p, "-");
-//   }
-//   |
-//   TIMES
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: *" << endl;
-// #endif
-//     $$ = new OpExp(p, "*");
-//   }
-//   |
-//   DIVIDE
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: /" << endl;
-// #endif
-//     $$ = new OpExp(p, "/");
-//   }
-//   |
-//   EQ
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: ==" << endl;
-// #endif
-//     $$ = new OpExp(p, "==");
-//   }
-//   |
-//   NE
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: !=" << endl;
-// #endif
-//     $$ = new OpExp(p, "!=");
-//   }
-//   |
-//   LT
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: <" << endl;
-// #endif
-//     $$ = new OpExp(p, "<");
-//   }
-//   |
-//   LE
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: <=" << endl;
-// #endif
-//     $$ = new OpExp(p, "<=");
-//   }
-//   |
-//   GT
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: >" << endl;
-// #endif
-//     $$ = new OpExp(p, ">");
-//   }
-//   |
-//   GE
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: >=" << endl;
-// #endif
-//     $$ = new OpExp(p, ">=");
-//   }
-//   |
-//   AND
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: &&" << endl;
-// #endif
-//     $$ = new OpExp(p, "&&");
-//   }
-//   |
-//   OR
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: ||" << endl;
-// #endif
-//     $$ = new OpExp(p, "||");
-//   }
-//   |
-//   NOT
-//   {
-// #ifdef DEBUG
-//     cerr << "Operator: !" << endl;
-// #endif
-//     $$ = new OpExp(p, "!");
-//   }
-//   ;
-
-// BOOLEXP: TRUE
-//   {
-// #ifdef DEBUG
-//     cerr << "Boolean: true" << endl;
-// #endif
-//     $$ = new BoolExp(p, true);
-//   }
-//   |
-//   FALSE
-//   {
-// #ifdef DEBUG
-//     cerr << "Boolean: false" << endl;
-// #endif
-//     $$ = new BoolExp(p, false);
-//   }
-//   ;
-
+// Formal syntax
 PROG: MAINMETHOD CLASSDECLLIST
   { 
     DEBUG_PRINT("Program");
@@ -311,34 +147,6 @@ MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' VARDECLLIST STMLIST '}'
   {
     DEBUG_PRINT("MainMethod");
     $$ = new MainMethod(p, $7, $8);
-  }
-  ;
-
-CLASSDECLLIST: /* empty */
-  {
-    DEBUG_PRINT("ClassDeclList empty");
-    $$ = new vector<ClassDecl*>();
-  }
-  |
-  CLASSDECL CLASSDECLLIST
-  {
-    DEBUG_PRINT("ClassDecl ClassDeclList");
-    vector<ClassDecl*> *v = $2;
-    v->push_back($1);
-    $$ = v;
-  }
-  ;
-
-CLASSDECL: PUBLIC CLASS ID '{' VARDECLLIST METHODDECLLIST '}'
-  {
-    DEBUG_PRINT("ClassDecl");
-    $$ = new ClassDecl(p, $3, nullptr, $5, $6);
-  }
-  |
-  PUBLIC CLASS ID EXTENDS ID '{' VARDECLLIST METHODDECLLIST '}'
-  {
-    DEBUG_PRINT("ClassDecl with extends");
-    $$ = new ClassDecl(p, $3, $5, $7, $8);
   }
   ;
 
@@ -400,73 +208,45 @@ VARDECL: CLASS ID ID ';'
   }
   ;
 
-METHODDECLLIST: /* empty */
+CONST: NUM
   {
-    DEBUG_PRINT("MethodDeclList empty");
-    $$ = new vector<MethodDecl*>();
+    DEBUG_PRINT("Const");
+    $$ = $1;
   }
   |
-  METHODDECL METHODDECLLIST
+  MINUS NUM %prec UMINUS
   {
-    DEBUG_PRINT("MethodDecl MethodDeclList");
-    vector<MethodDecl*> *v = $2;
-    v->push_back($1);
+    DEBUG_PRINT("Negative Const");
+    $$ = new IntExp(p, -$2->val);
+  }
+  ;
+
+CONSTLIST: /* empty */
+  {
+    DEBUG_PRINT("ConstList empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  CONST CONSTREST
+  {
+    DEBUG_PRINT("Const ConstList");
+    vector<IntExp*> *v = $2;
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
 
-METHODDECL: PUBLIC TYPE ID '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
+CONSTREST: /* empty */
   {
-    DEBUG_PRINT("MethodDecl");
-    $$ = new MethodDecl(p, $2, $3, $5, $8, $9);
-  }
-  ;
-
-TYPE: CLASS ID
-  {
-    DEBUG_PRINT("Class Type");
-    $$ = new Type(p, TypeKind::CLASS, $2, nullptr);
+    DEBUG_PRINT("ConstRest empty");
+    $$ = new vector<IntExp*>();
   }
   |
-  INT
+  ',' CONST CONSTREST
   {
-    DEBUG_PRINT("Int Type");
-    $$ = new Type(p);
-  }
-  |
-  INT '[' ']'
-  {
-    DEBUG_PRINT("Array Type");
-    $$ = new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0));
-  }
-  ;
-
-FORMALLIST: /* empty */
-  {
-    DEBUG_PRINT("FormalList empty");
-    $$ = new vector<Formal*>();
-  }
-  |
-  TYPE ID FORMALREST
-  {
-    DEBUG_PRINT("FormalList");
-    vector<Formal*> *v = $3;
-    v->insert(v->begin(), new Formal(p, $1, $2));
-    $$ = v;
-  }
-  ;
-
-FORMALREST: /* empty */
-  {
-    DEBUG_PRINT("FormalRest empty");
-    $$ = new vector<Formal*>();
-  }
-  |
-  ',' TYPE ID FORMALREST
-  {
-    DEBUG_PRINT("FormalRest");
-    vector<Formal*> *v = $4;
-    v->insert(v->begin(), new Formal(p, $2, $3));
+    DEBUG_PRINT("ConstRest");
+    vector<IntExp*> *v = $3;
+    v->insert(v->begin(), $2);
     $$ = v;
   }
   ;
@@ -577,35 +357,6 @@ STM: '{' STMLIST '}'
     $$ = new Stoptime(p);
   }
   ;
-
-EXPLIST: /* empty */
-  {
-    DEBUG_PRINT("ExpList empty");
-    $$ = new vector<Exp*>();
-  }
-  |
-  EXP EXPREST
-  {
-    DEBUG_PRINT("Exp ExpRest");
-    vector<Exp*> *v = $2;
-    v->insert(v->begin(), $1);
-    $$ = v;
-  }
-  ;
-
-EXPREST: /* empty */
-  {
-    DEBUG_PRINT("ExpRest empty");
-    $$ = new vector<Exp*>();
-  }
-  |
-  ',' EXP EXPREST
-  {
-    DEBUG_PRINT("ExpRest");
-    vector<Exp*> *v = $3;
-    v->insert(v->begin(), $2);
-    $$ = v;
-  }
 
 EXP: NUM
   {
@@ -773,6 +524,134 @@ EXP: NUM
   {
     DEBUG_PRINT("Array Access Exp");
     $$ = new ArrayExp(p, $1, $3);
+  }
+  ;
+
+EXPLIST: /* empty */
+  {
+    DEBUG_PRINT("ExpList empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  EXP EXPREST
+  {
+    DEBUG_PRINT("Exp ExpRest");
+    vector<Exp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+EXPREST: /* empty */
+  {
+    DEBUG_PRINT("ExpRest empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  ',' EXP EXPREST
+  {
+    DEBUG_PRINT("ExpRest");
+    vector<Exp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+
+CLASSDECLLIST: /* empty */
+  {
+    DEBUG_PRINT("ClassDeclList empty");
+    $$ = new vector<ClassDecl*>();
+  }
+  |
+  CLASSDECL CLASSDECLLIST
+  {
+    DEBUG_PRINT("ClassDecl ClassDeclList");
+    vector<ClassDecl*> *v = $2;
+    v->push_back($1);
+    $$ = v;
+  }
+  ;
+
+CLASSDECL: PUBLIC CLASS ID '{' VARDECLLIST METHODDECLLIST '}'
+  {
+    DEBUG_PRINT("ClassDecl");
+    $$ = new ClassDecl(p, $3, nullptr, $5, $6);
+  }
+  |
+  PUBLIC CLASS ID EXTENDS ID '{' VARDECLLIST METHODDECLLIST '}'
+  {
+    DEBUG_PRINT("ClassDecl with extends");
+    $$ = new ClassDecl(p, $3, $5, $7, $8);
+  }
+  ;
+
+METHODDECLLIST: /* empty */
+  {
+    DEBUG_PRINT("MethodDeclList empty");
+    $$ = new vector<MethodDecl*>();
+  }
+  |
+  METHODDECL METHODDECLLIST
+  {
+    DEBUG_PRINT("MethodDecl MethodDeclList");
+    vector<MethodDecl*> *v = $2;
+    v->push_back($1);
+    $$ = v;
+  }
+  ;
+
+METHODDECL: PUBLIC TYPE ID '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
+  {
+    DEBUG_PRINT("MethodDecl");
+    $$ = new MethodDecl(p, $2, $3, $5, $8, $9);
+  }
+  ;
+
+TYPE: CLASS ID
+  {
+    DEBUG_PRINT("Class Type");
+    $$ = new Type(p, TypeKind::CLASS, $2, nullptr);
+  }
+  |
+  INT
+  {
+    DEBUG_PRINT("Int Type");
+    $$ = new Type(p);
+  }
+  |
+  INT '[' ']'
+  {
+    DEBUG_PRINT("Array Type");
+    $$ = new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0));
+  }
+  ;
+
+FORMALLIST: /* empty */
+  {
+    DEBUG_PRINT("FormalList empty");
+    $$ = new vector<Formal*>();
+  }
+  |
+  TYPE ID FORMALREST
+  {
+    DEBUG_PRINT("FormalList");
+    vector<Formal*> *v = $3;
+    v->insert(v->begin(), new Formal(p, $1, $2));
+    $$ = v;
+  }
+  ;
+
+FORMALREST: /* empty */
+  {
+    DEBUG_PRINT("FormalRest empty");
+    $$ = new vector<Formal*>();
+  }
+  |
+  ',' TYPE ID FORMALREST
+  {
+    DEBUG_PRINT("FormalRest");
+    vector<Formal*> *v = $4;
+    v->insert(v->begin(), new Formal(p, $2, $3));
+    $$ = v;
   }
   ;
 
