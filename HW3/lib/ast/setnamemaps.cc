@@ -21,6 +21,7 @@ void AST_Name_Map_Visitor::visit(Program *node) {
   }
   if (node->cdl != nullptr) {
     for (auto cl : *(node->cdl)) {
+      CHECK_NULLPTR(cl);
       cl->accept(*this);
     }
   }
@@ -59,11 +60,13 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
   
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
+      CHECK_NULLPTR(vd);
       vd->accept(*this);
     }
   }
   if (node->sl != nullptr) {
     for (auto s : *(node->sl)) {
+      CHECK_NULLPTR(s);
       s->accept(*this);
     }
   }
@@ -76,38 +79,109 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
 void AST_Name_Map_Visitor::visit(ClassDecl *node) {
   DEBUG_PRINT("Visiting ClassDecl");
   CHECK_NULLPTR(node);
+  CHECK_NULLPTR(node->id); // 增加对 id 的空指针检查
   
-  // 记录类名和继承关系
+  // 记录类名
   string class_name = node->id->id;
   current_class = class_name;
   name_maps->add_class(class_name);
   
-  // 如果有继承关系，添加到类层次结构中
-  if (node->eid != nullptr) {
-    string parent_name = node->eid->id;
-    name_maps->add_class_hiearchy(class_name, parent_name);
-  }
-  
+  // 先处理类自己的变量和方法
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
+      CHECK_NULLPTR(vd); // 检查每个变量声明指针
       vd->accept(*this);
     }
   }
+  
   if (node->mdl != nullptr) {
     for (auto md : *(node->mdl)) {
+      CHECK_NULLPTR(md);
       md->accept(*this);
     }
   }
   
-  // 访问完类后重置当前类名
-  current_class = "";
+  // 然后处理继承关系
+  if (node->eid != nullptr) {
+    CHECK_NULLPTR(node->eid); // 增加对 eid 的空指针检查
+    string parent_name = node->eid->id;
+    
+    // 检查父类是否存在
+    if (!name_maps->is_class(parent_name)) {
+      cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+           << ": Parent class '" << parent_name << "' not found" << endl;
+    } else {
+      name_maps->add_class_hiearchy(class_name, parent_name);
+      
+      // 处理继承的变量
+      vector<string> parent_vars = name_maps->get_class_var_names(parent_name);
+      for (auto var_name : parent_vars) {
+        // 检查子类是否已有同名变量
+        if (name_maps->is_class_var(class_name, var_name)) {
+          VarDecl* child_var = name_maps->get_class_var(class_name, var_name);
+          VarDecl* parent_var = name_maps->get_class_var(parent_name, var_name);
+          
+          if (child_var && parent_var) {
+            cerr << "Error at line " << child_var->getPos()->sline << ", column " << child_var->getPos()->scolumn
+                 << ": Variable '" << var_name << "' in class '" << class_name 
+                 << "' conflicts with inherited variable from parent class '" << parent_name << "'" << endl;
+          }
+        } else {
+          // 将父类变量继承到子类
+          name_maps->inherit_var(parent_name, class_name, var_name);
+        }
+      }
+      
+      // 处理继承的方法
+      vector<string> parent_methods = name_maps->get_class_method_names(parent_name);
+      for (auto method_name : parent_methods) {
+        // 检查子类是否已有同名方法
+        if (name_maps->is_method(class_name, method_name)) {
+          // 检查方法签名是否一致
+          if (!name_maps->check_method_signature(parent_name, method_name, class_name, method_name)) {
+            cerr << "Error: Method '" << method_name << "' in class '" << class_name 
+                 << "' does not match signature of inherited method from parent class '" 
+                 << parent_name << "'" << endl;
+          }
+          // 如果签名一致，子类方法覆盖父类方法，不需要额外处理
+        } else {
+          // 将父类方法添加到子类
+          name_maps->add_method(class_name, method_name);
+          
+          // 使用新方法获取形参列表
+          vector<string> param_list = name_maps->get_method_formal_list_names(parent_name, method_name);
+          if (!param_list.empty()) {
+            name_maps->add_method_formal_list(class_name, method_name, param_list);
+            
+            // 复制每个形参
+            for (auto param_name : param_list) {
+              Formal* formal = name_maps->get_method_formal(parent_name, method_name, param_name);
+              if (formal) {
+                name_maps->add_method_formal(class_name, method_name, param_name, formal);
+              }
+            }
+          }
+          
+          // 复制方法的返回类型
+          Type* ret_type = name_maps->get_method_type(parent_name, method_name);
+          if (ret_type) {
+            name_maps->add_method_type(class_name, method_name, ret_type);
+          }
+        }
+      }
+    }
+  }
   
+  // 访问id和eid
   if (node->id != nullptr) {
     node->id->accept(*this);
   }
   if (node->eid != nullptr) {
     node->eid->accept(*this);
   }
+  
+  // 注释掉重置 current_class，确保后续方法访问时能获取到所属类信息
+  // current_class = "";
 }
 
 void AST_Name_Map_Visitor::visit(Type *node) {
@@ -128,6 +202,7 @@ void AST_Name_Map_Visitor::visit(Type *node) {
 void AST_Name_Map_Visitor::visit(VarDecl *node) {
   DEBUG_PRINT("Visiting VarDecl");
   CHECK_NULLPTR(node);
+  CHECK_NULLPTR(node->id); // 增加对 id 的空指针检查
   
   // 根据上下文确定是类变量还是方法变量
   if (!current_class.empty()) {
@@ -147,10 +222,16 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
     node->id->accept(*this);
   }
   if (node->init.index() == 1) {
-    get<IntExp *>(node->init)->accept(*this);
+    auto ie = get<IntExp *>(node->init);
+    CHECK_NULLPTR(ie); // 检查通过 variant 获取的 IntExp 指针
+    ie->accept(*this);
   } else if (node->init.index() == 2) {
-    for (auto e : *(get<vector<IntExp *> *>(node->init))) {
-      e->accept(*this);
+    auto vec = get<vector<IntExp *> *>(node->init);
+    if (vec != nullptr) {
+      for (auto e : *vec) {
+        CHECK_NULLPTR(e); // 检查每个数组元素指针
+        e->accept(*this);
+      }
     }
   }
 }
@@ -158,6 +239,7 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
 void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   DEBUG_PRINT("Visiting MethodDecl");
   CHECK_NULLPTR(node);
+  CHECK_NULLPTR(node->id); // 增加对 id 的空指针检查
   
   // 记录方法名
   string method_name = node->id->id;
@@ -170,6 +252,7 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   
   if (node->fl != nullptr) {
     for (auto f : *(node->fl)) {
+      CHECK_NULLPTR(f); // 检查形参指针
       f->accept(*this);
     }
   }
@@ -177,9 +260,10 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   // 添加方法返回值作为特殊形参
   string return_var_name = "^_method_return";
   if (node->type != nullptr) {
-    // 创建代表返回值的形参
+    // 存储方法的返回类型
+    name_maps->add_method_type(current_class, method_name, node->type->clone());
+    
     Formal* return_formal = new Formal(node->getPos(), node->type->clone(), new IdExp(node->getPos(), return_var_name));
-    // 添加到方法形参映射
     name_maps->add_method_formal(current_class, method_name, return_var_name, return_formal);
     current_formal_list.push_back(return_var_name);
   }
@@ -197,11 +281,13 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   
   if (node->vdl != nullptr) {
     for (auto vd : *(node->vdl)) {
+      CHECK_NULLPTR(vd);
       vd->accept(*this);
     }
   }
   if (node->sl != nullptr) {
     for (auto s : *(node->sl)) {
+      CHECK_NULLPTR(s);
       s->accept(*this);
     }
   }
@@ -213,6 +299,7 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
 void AST_Name_Map_Visitor::visit(Formal *node) {
   DEBUG_PRINT("Visiting Formal");
   CHECK_NULLPTR(node);
+  CHECK_NULLPTR(node->id); // 增加对 id 的空指针检查
   
   // 记录方法形参
   if (!current_class.empty() && !current_method.empty() && in_formal) {
@@ -234,6 +321,7 @@ void AST_Name_Map_Visitor::visit(Nested *node) {
   CHECK_NULLPTR(node);
   if (node->sl != nullptr) {
     for (auto s : *(node->sl)) {
+      CHECK_NULLPTR(s);
       s->accept(*this);
     }
   }
@@ -286,6 +374,7 @@ void AST_Name_Map_Visitor::visit(CallStm *node) {
   }
   if (node->par != nullptr) {
     for (auto p : *(node->par)) {
+      CHECK_NULLPTR(p); // 检查每个实参指针
       p->accept(*this);
     }
   }
@@ -387,6 +476,7 @@ void AST_Name_Map_Visitor::visit(CallExp *node) {
   }
   if (node->par != nullptr) {
     for (auto p : *(node->par)) {
+      CHECK_NULLPTR(p); // 检查每个实参指针
       p->accept(*this);
     }
   }

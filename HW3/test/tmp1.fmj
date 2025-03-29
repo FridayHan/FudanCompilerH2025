@@ -7,3 +7,8 @@ public int main() {
    z=x+y;
    return z;
 }
+
+public class A {
+	int z;
+   int a;
+}

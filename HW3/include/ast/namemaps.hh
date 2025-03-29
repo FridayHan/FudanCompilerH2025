@@ -8,7 +8,10 @@
 #define DEBUG_PRINT2(msg, val) do { } while (0)
 #endif
 
-#define CHECK_NULLPTR(node) if (node == nullptr) return;
+#define CHECK_NULLPTR(node) if (node == nullptr) { \
+    std::cerr << "Error: Null pointer at " << __FILE__ << ":" << __LINE__ << std::endl; \
+    return; \
+}
 
 #ifndef __AST_NAMEMAPS_HH__
 #define __AST_NAMEMAPS_HH__
@@ -56,9 +59,23 @@ public:
     vector<Formal*>* get_method_formal_list(string class_name, string method_name);
     bool add_method_type(string class_name, string method_name, Type* type);
     Type* get_method_type(string class_name, string method_name);
+    vector<string> get_method_formal_list_names(string class_name, string method_name);
+
+    // 获取所有类名
+    set<string> get_all_classes() { return classes; }
+    // 获取父类名
+    string get_parent_class(string class_name) {
+        if (classHierachy.find(class_name) != classHierachy.end()) {
+            return classHierachy[class_name];
+        }
+        return "";
+    }
 
     void print();
-    
+    vector<string> get_class_var_names(string class_name);
+    vector<string> get_class_method_names(string class_name);
+    bool inherit_var(string parent_class, string child_class, string var_name);
+    bool check_method_signature(string class1, string method1, string class2, string method2);
 };
 
 //this visitor is to set up the name maps for the program

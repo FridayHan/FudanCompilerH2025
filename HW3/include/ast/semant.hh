@@ -82,9 +82,14 @@ private:
     Name_Maps* const name_maps; //this is the map for all names in the program
     string current_class;
     string current_method;
+    int loop_depth = 0; // 跟踪当前循环嵌套深度
+    
+    // 辅助函数：在类及其父类中查找变量
+    VarDecl* find_var_in_class_hierarchy(const string& class_name, const string& var_name);
+    
 public:
     //Change this constructor if more members are added above (if necessary)
-    AST_Semant_Visitor(Name_Maps* name_maps) : name_maps(name_maps) {
+    AST_Semant_Visitor(Name_Maps* name_maps) : name_maps(name_maps), loop_depth(0) {
         semant_map = new AST_Semant_Map();
     }
     AST_Semant_Map* getSemantMap() { return semant_map; }
