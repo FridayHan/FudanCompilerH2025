@@ -43,7 +43,7 @@ int main(int argc, const char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    cout << "Convert AST  to XML..." << endl;
+    cout << "Convert AST to XML..." << endl;
     XMLDocument *x = ast2xml(root, nullptr, with_location_info, false); // no semant info yet
     x->SaveFile(file_ast.c_str());
     std::cout << "Writing AST to file: " << file_ast << std::endl;

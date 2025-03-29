@@ -402,3 +402,62 @@ bool Name_Maps::check_method_signature(string class1, string method1, string cla
     
     return true;
 }
+
+// 新增：检查变量在特定作用域内是否重复定义
+bool Name_Maps::is_var_duplicate_in_scope(string class_name, string method_name, string var_name) {
+    if (method_name.empty()) {
+        // 类作用域检查
+        if (is_class_var(class_name, var_name)) {
+            return true;
+        }
+    } else {
+        // 方法作用域检查
+        
+        // 1. 检查是否与方法内的其他局部变量重复
+        if (is_method_var(class_name, method_name, var_name)) {
+            return true;
+        }
+        
+        // 2. 检查是否与方法参数重复
+        if (is_method_formal(class_name, method_name, var_name)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// 新增：检查变量是否可在当前作用域访问（考虑作用域嵌套）
+bool Name_Maps::is_var_accessible(string current_class, string current_method, string var_name) {
+    // 1. 首先检查方法的局部变量
+    if (!current_method.empty() && is_method_var(current_class, current_method, var_name)) {
+        return true;
+    }
+    
+    // 2. 检查方法参数
+    if (!current_method.empty() && is_method_formal(current_class, current_method, var_name)) {
+        return true;
+    }
+    
+    // 3. 检查当前类的成员变量
+    if (!current_class.empty() && is_class_var(current_class, var_name)) {
+        return true;
+    }
+    
+    // 4. 检查父类的成员变量
+    if (!current_class.empty()) {
+        set<string> ancestors = get_ancestors(current_class);
+        for (const auto& ancestor : ancestors) {
+            if (is_class_var(ancestor, var_name)) {
+                return true;
+            }
+        }
+    }
+    
+    // 5. 检查MainClass的变量（全局变量）
+    if (is_class_var("MainClass", var_name)) {
+        return true;
+    }
+    
+    return false;
+}

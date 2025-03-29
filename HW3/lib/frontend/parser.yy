@@ -231,7 +231,6 @@ CONSTLIST: /* empty */
   {
     DEBUG_PRINT("Const ConstList");
     vector<IntExp*> *v = $2;
-    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -247,7 +246,6 @@ CONSTREST: /* empty */
   {
     DEBUG_PRINT("ConstRest");
     vector<IntExp*> *v = $3;
-    // v->push_back($2);
     v->insert(v->begin(), $2);
     $$ = v;
   }
@@ -538,7 +536,6 @@ EXPLIST: /* empty */
   {
     DEBUG_PRINT("Exp ExpRest");
     vector<Exp*> *v = $2;
-    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -554,7 +551,6 @@ EXPREST: /* empty */
   {
     DEBUG_PRINT("ExpRest");
     vector<Exp*> *v = $3;
-    // v->push_back($2);
     v->insert(v->begin(), $2);
     $$ = v;
   }
@@ -569,7 +565,6 @@ CLASSDECLLIST: /* empty */
   {
     DEBUG_PRINT("ClassDecl ClassDeclList");
     vector<ClassDecl*> *v = $2;
-    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -598,7 +593,6 @@ METHODDECLLIST: /* empty */
   {
     DEBUG_PRINT("MethodDecl MethodDeclList");
     vector<MethodDecl*> *v = $2;
-    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -640,7 +634,6 @@ FORMALLIST: /* empty */
   {
     DEBUG_PRINT("FormalList");
     vector<Formal*> *v = $3;
-    // v->push_back(new Formal(p, $1, $2));
     v->insert(v->begin(), new Formal(p, $1, $2));
     $$ = v;
   }
@@ -656,7 +649,6 @@ FORMALREST: /* empty */
   {
     DEBUG_PRINT("FormalRest");
     vector<Formal*> *v = $4;
-    // v->push_back(new Formal(p, $2, $3));
     v->insert(v->begin(), new Formal(p, $2, $3));
     $$ = v;
   }
@@ -679,14 +671,14 @@ namespace fdmj
     template<typename RHS>
     inline void calcLocation(location_t &current, const RHS &rhs, const size_t n)
     {
-        current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
-                                    YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
-        p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
+      current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
+                                  YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
+      p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
     }
     
     void ASTParser::error(const location_t &location, const string &message)
     {
-        cerr << "Error at lines " << location << ": " << message << endl;
+      cerr << "Error at lines " << location << ": " << message << endl;
     }
 
   Program* fdmjParser(ifstream &fp, const bool debug) {

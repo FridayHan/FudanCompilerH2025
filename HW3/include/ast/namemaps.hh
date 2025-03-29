@@ -8,7 +8,7 @@
 #define DEBUG_PRINT2(msg, val) do { } while (0)
 #endif
 
-#define CHECK_NULLPTR(node) if (node == nullptr) { \
+#define CHECK_NULLPTR(node) if (!node) { \
     std::cerr << "Error: Null pointer at " << __FILE__ << ":" << __LINE__ << std::endl; \
     return; \
 }
@@ -76,6 +76,12 @@ public:
     vector<string> get_class_method_names(string class_name);
     bool inherit_var(string parent_class, string child_class, string var_name);
     bool check_method_signature(string class1, string method1, string class2, string method2);
+
+    // 新增：检查变量在特定作用域内是否重复定义
+    bool is_var_duplicate_in_scope(string class_name, string method_name, string var_name);
+    
+    // 新增：检查变量是否可在当前作用域访问（考虑作用域嵌套）
+    bool is_var_accessible(string current_class, string current_method, string var_name);
 };
 
 //this visitor is to set up the name maps for the program

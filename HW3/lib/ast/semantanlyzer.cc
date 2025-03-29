@@ -11,7 +11,6 @@
 using namespace std;
 using namespace fdmj;
 
-// 语义分析入口函数
 AST_Semant_Map* semant_analyze(Program* node) {
     cerr << "Start Semantic Analysis" << endl;
     if (node == nullptr) {
@@ -27,8 +26,15 @@ AST_Semant_Map* semant_analyze(Program* node) {
 void AST_Semant_Visitor::visit(Program* node) {
     DEBUG_PRINT("Visiting Program");
     CHECK_NULLPTR(node);
-    if (node->main != nullptr) {
+    if (node->main) {
         node->main->accept(*this);
+    }
+
+    if (node->cdl) {
+        for (auto cl : *(node->cdl)) {
+            CHECK_NULLPTR(cl);
+            cl->accept(*this);
+        }
     }
 }
 
@@ -41,9 +47,10 @@ void AST_Semant_Visitor::visit(MainMethod* node) {
     Type* main_type = new Type(node->getPos());
     name_maps->add_method_type(current_class, current_method, main_type);
     
-    if (node->vdl != nullptr) {
+    if (node->vdl) {
         set<string> declared_vars;
         
+        // 检查变量是否重复定义
         for (auto vd : *(node->vdl)) {
             if (vd && vd->id) {
                 string var_name = vd->id->id;
@@ -58,7 +65,7 @@ void AST_Semant_Visitor::visit(MainMethod* node) {
         }
     }
     
-    if (node->sl != nullptr) {
+    if (node->sl) {
         for (auto s : *(node->sl)) {
             s->accept(*this);
         }
@@ -77,7 +84,7 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
     string saved_class = current_class;
     current_class = class_name;
     
-    if (node->vdl != nullptr) {
+    if (node->vdl) {
         set<string> class_vars;
         for (auto vd : *(node->vdl)) {
             if (vd && vd->id) {
@@ -110,7 +117,7 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
         }
     }
     
-    if (node->mdl != nullptr) {
+    if (node->mdl) {
         set<string> class_methods;
         for (auto md : *(node->mdl)) {
             if (md && md->id) {
@@ -125,12 +132,19 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
         }
     }
     
-    if (node->eid != nullptr) {
+    if (node->eid) {
         string parent_name = node->eid->id;
         if (!name_maps->is_class(parent_name)) {
             cerr << "Error at line " << node->eid->getPos()->sline << ", column " << node->eid->getPos()->scolumn
                  << ": Parent class '" << parent_name << "' not found" << endl;
         }
+    }
+    
+    if (node->id) {
+        node->id->accept(*this);
+    }
+    if (node->eid) {
+        node->eid->accept(*this);
     }
     
     current_class = saved_class;
@@ -143,7 +157,7 @@ void AST_Semant_Visitor::visit(MethodDecl* node) {
     current_method = node->id->id;
     name_maps->add_method(current_class, current_method);
     
-    if (node->fl != nullptr) {
+    if (node->fl) {
         set<string> param_names;
         for (auto f : *(node->fl)) {
             if (f && f->id) {
@@ -160,11 +174,11 @@ void AST_Semant_Visitor::visit(MethodDecl* node) {
         }
     }
     
-    if (node->type != nullptr) {
+    if (node->type) {
         node->type->accept(*this);
     }
     
-    if (node->vdl != nullptr) {
+    if (node->vdl) {
         set<string> local_vars;
         for (auto vd : *(node->vdl)) {
             if (vd && vd->id) {
@@ -186,7 +200,7 @@ void AST_Semant_Visitor::visit(MethodDecl* node) {
         }
     }
     
-    if (node->sl != nullptr) {
+    if (node->sl) {
         for (auto stm : *(node->sl)) {
             stm->accept(*this);
         }
@@ -194,14 +208,14 @@ void AST_Semant_Visitor::visit(MethodDecl* node) {
     
     current_method = "";
     
-    if (node->type != nullptr && node->sl != nullptr && !node->sl->empty()) {
+    if (node->type && node->sl && !node->sl->empty()) {
         Stm* last_stm = node->sl->back();
         if (last_stm->getASTKind() == ASTKind::Return) {
             auto ret_stm = static_cast<Return*>(last_stm);
-            if (ret_stm->exp != nullptr) {
+            if (ret_stm->exp) {
                 ret_stm->exp->accept(*this);
                 auto ret_semant = semant_map->getSemant(ret_stm->exp);
-                if (ret_semant != nullptr && ret_semant->get_type() != node->type->typeKind) {
+                if (ret_semant && ret_semant->get_type() != node->type->typeKind) {
                     cerr << "Error: Return type mismatch in method " << node->id->id << endl;
                 }
             }
@@ -251,7 +265,7 @@ void AST_Semant_Visitor::visit(VarDecl* node) {
         }
     }
 
-    if (node->type != nullptr) {
+    if (node->type) {
         node->type->accept(*this);
     }
 }
@@ -264,7 +278,7 @@ void AST_Semant_Visitor::visit(Formal* node) {
     string param_name = node->id->id;
     
     if (param_name == "^_method_return") {
-        if (node->type != nullptr) {
+        if (node->type) {
             node->type->accept(*this);
         }
         return;
@@ -287,7 +301,7 @@ void AST_Semant_Visitor::visit(Formal* node) {
         }
     }
 
-    if (node->type != nullptr) {
+    if (node->type) {
         node->type->accept(*this);
     }
 }
@@ -295,15 +309,15 @@ void AST_Semant_Visitor::visit(Formal* node) {
 void AST_Semant_Visitor::visit(Assign* node) {
     DEBUG_PRINT("Visiting Assign");
     CHECK_NULLPTR(node);
-    if (node->left != nullptr) {
+    if (node->left) {
         node->left->accept(*this);
     }
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
     }
     
     auto lhs_semant = semant_map->getSemant(node->left);
-    if (lhs_semant != nullptr && !lhs_semant->is_lvalue()) {
+    if (lhs_semant && !lhs_semant->is_lvalue()) {
         cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
              << ": Left side of assignment is not an lvalue" << endl;
         
@@ -318,7 +332,7 @@ void AST_Semant_Visitor::visit(Assign* node) {
     }
     
     auto rhs_semant = semant_map->getSemant(node->exp);
-    if (lhs_semant != nullptr && rhs_semant != nullptr) {
+    if (lhs_semant && rhs_semant) {
         if (lhs_semant->get_type() != rhs_semant->get_type()) {
             cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                  << ": Type mismatch in assignment - cannot assign " 
@@ -342,7 +356,7 @@ void AST_Semant_Visitor::visit(Assign* node) {
 void AST_Semant_Visitor::visit(If* node) {
     DEBUG_PRINT("Visiting If");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
         auto cond_semant = semant_map->getSemant(node->exp);
         if (cond_semant && cond_semant->get_type() != TypeKind::INT) {
@@ -352,11 +366,11 @@ void AST_Semant_Visitor::visit(If* node) {
         }
     }
     
-    if (node->stm1 != nullptr) {
+    if (node->stm1) {
         node->stm1->accept(*this);
     }
     
-    if (node->stm2 != nullptr) {
+    if (node->stm2) {
         node->stm2->accept(*this);
     }
 }
@@ -364,7 +378,7 @@ void AST_Semant_Visitor::visit(If* node) {
 void AST_Semant_Visitor::visit(While* node) {
     DEBUG_PRINT("Visiting While");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
         
         auto cond_semant = semant_map->getSemant(node->exp);
@@ -377,7 +391,7 @@ void AST_Semant_Visitor::visit(While* node) {
     
     loop_depth++;
     
-    if (node->stm != nullptr) {
+    if (node->stm) {
         node->stm->accept(*this);
     }
     
@@ -388,11 +402,28 @@ void AST_Semant_Visitor::visit(BinaryOp* node) {
     DEBUG_PRINT("Visiting BinaryOp");
     CHECK_NULLPTR(node);
     
-    if (node->left != nullptr) {
+    if (node->left) {
         node->left->accept(*this);
     }
-    if (node->right != nullptr) {
+    if (node->right) {
         node->right->accept(*this);
+    }
+    
+    // 若左右操作数为 IdExp，则确保其语义信息已设置
+    if (node->left && node->left->getASTKind() == ASTKind::IdExp) {
+        IdExp* idExp = static_cast<IdExp*>(node->left);
+        if (semant_map->getSemant(idExp) == nullptr) {
+            // 设置为 Value 类型，INT 类型，lvalue 为 true（示例默认值，可按需要调整）
+            AST_Semant* sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(0), true);
+            semant_map->setSemant(idExp, sem);
+        }
+    }
+    if (node->right && node->right->getASTKind() == ASTKind::IdExp) {
+        IdExp* idExp = static_cast<IdExp*>(node->right);
+        if (semant_map->getSemant(idExp) == nullptr) {
+            AST_Semant* sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(0), true);
+            semant_map->setSemant(idExp, sem);
+        }
     }
     
     AST_Semant* left_semant = semant_map->getSemant(node->left);
@@ -406,66 +437,79 @@ void AST_Semant_Visitor::visit(BinaryOp* node) {
     if (node->op && !node->op->op.empty()) {
         string op_str = node->op->op;
         
+        // 针对算术运算符的处理
         if (op_str == "+" || op_str == "-" || op_str == "*" || op_str == "/") {
-            if (left_semant && left_semant->get_type() != TypeKind::INT) {
-                cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
-                     << ": Left operand of '" << op_str << "' must be int, found "
-                     << type_kind_string(left_semant->get_type()) << endl;
+            // 如果有任一操作数为数组，则必须都是数组
+            bool left_is_array = (left_semant && left_semant->get_type() == TypeKind::ARRAY);
+            bool right_is_array = (right_semant && right_semant->get_type() == TypeKind::ARRAY);
+            if (left_is_array || right_is_array) {
+                if (!(left_is_array && right_is_array)) {
+                    cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+                         << ": Mixed array and int in '" << op_str << "' operation" << endl;
+                } else {
+                    int larity = get<int>(left_semant->get_type_par());
+                    int rarity = get<int>(right_semant->get_type_par());
+                    if (larity != rarity) {
+                        cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+                             << ": Array operands must have the same arity in '" << op_str << "' operation" << endl;
+                    }
+                    result_type = TypeKind::ARRAY;
+                    type_par = variant<monostate, string, int>(larity);
+                    s_kind = AST_Semant::Kind::Value;
+                    is_lvalue = false;
+                }
             }
-            
-            if (right_semant && right_semant->get_type() != TypeKind::INT) {
-                cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
-                     << ": Right operand of '" << op_str << "' must be int, found "
-                     << type_kind_string(right_semant->get_type()) << endl;
+            else {
+                // 原 int 检查
+                if (left_semant && left_semant->get_type() != TypeKind::INT) {
+                    cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+                         << ": Left operand of '" << op_str << "' must be int, found "
+                         << type_kind_string(left_semant->get_type()) << endl;
+                }
+                if (right_semant && right_semant->get_type() != TypeKind::INT) {
+                    cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+                         << ": Right operand of '" << op_str << "' must be int, found "
+                         << type_kind_string(right_semant->get_type()) << endl;
+                }
+                result_type = TypeKind::INT;
+                s_kind = AST_Semant::Kind::Value;
+                is_lvalue = false;
             }
-            
-            result_type = TypeKind::INT;
-            s_kind = AST_Semant::Kind::Value;
-            is_lvalue = false;
         }
-        else if (op_str == "<" || op_str == "<=" || op_str == ">" || 
-                op_str == ">=" || op_str == "==" || op_str == "!=") {
-            if (left_semant && right_semant) {
-                if (left_semant->get_type() != right_semant->get_type()) {
+        // 针对比较运算符==和!=的处理
+        else if (op_str == "==" || op_str == "!=") {
+            bool left_is_array = (left_semant && left_semant->get_type() == TypeKind::ARRAY);
+            bool right_is_array = (right_semant && right_semant->get_type() == TypeKind::ARRAY);
+            if (left_is_array || right_is_array) {
+                if (!(left_is_array && right_is_array)) {
                     cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
-                         << ": Operands of '" << op_str << "' must have compatible types, found "
-                         << type_kind_string(left_semant->get_type()) << " and "
-                         << type_kind_string(right_semant->get_type()) << endl;
-                }
-                
-                if (left_semant->get_type() == TypeKind::CLASS && 
-                    right_semant->get_type() == TypeKind::CLASS &&
-                    (op_str == "==" || op_str == "!=")) {
-                    result_type = TypeKind::INT;
-                } 
-                else if (op_str != "==" && op_str != "!=" && 
-                        (left_semant->get_type() != TypeKind::INT || 
-                         right_semant->get_type() != TypeKind::INT)) {
-                    cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
-                         << ": Operands of '" << op_str << "' must be int, found "
-                         << type_kind_string(left_semant->get_type()) << " and "
-                         << type_kind_string(right_semant->get_type()) << endl;
+                         << ": Mixed array and int in '" << op_str << "' comparison" << endl;
+                } else {
+                    int larity = get<int>(left_semant->get_type_par());
+                    int rarity = get<int>(right_semant->get_type_par());
+                    if (larity != rarity) {
+                        cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
+                             << ": Array operands must have the same arity in '" << op_str << "' comparison" << endl;
+                    }
                 }
             }
-            
             result_type = TypeKind::INT;
             s_kind = AST_Semant::Kind::Value;
             is_lvalue = false;
             type_par = variant<monostate, string, int>(0);
         }
+        // 保留其它运算符分支，如逻辑运算等
         else if (op_str == "&&" || op_str == "||") {
             if (left_semant && left_semant->get_type() != TypeKind::INT) {
                 cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                      << ": Left operand of '" << op_str << "' must be boolean, found "
                      << type_kind_string(left_semant->get_type()) << endl;
             }
-            
             if (right_semant && right_semant->get_type() != TypeKind::INT) {
                 cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                      << ": Right operand of '" << op_str << "' must be boolean, found "
                      << type_kind_string(right_semant->get_type()) << endl;
             }
-            
             result_type = TypeKind::INT;
             s_kind = AST_Semant::Kind::Value;
             is_lvalue = false;
@@ -480,7 +524,7 @@ void AST_Semant_Visitor::visit(BinaryOp* node) {
 void AST_Semant_Visitor::visit(Nested* node) {
     DEBUG_PRINT("Visiting Nested");
     CHECK_NULLPTR(node);
-    if (node->sl != nullptr) {
+    if (node->sl) {
         for (auto s : *(node->sl)) {
             s->accept(*this);
         }
@@ -493,24 +537,15 @@ void AST_Semant_Visitor::visit(CallStm* node) {
     
     string saved_class = current_class;
     
-    if (node->obj != nullptr) {
+    if (node->obj) {
         node->obj->accept(*this);
-        
-        AST_Semant* obj_semant = semant_map->getSemant(node->obj);
-        
-        if (obj_semant != nullptr && obj_semant->get_type() == TypeKind::CLASS) {
-            auto class_name = get<string>(obj_semant->get_type_par());
-            if (!class_name.empty()) {
-                DEBUG_PRINT("Setting context to class: " << class_name);
-                current_class = class_name;
-            }
-        }
     }
     
-    if (node->name != nullptr)
+    if (node->name) {
         node->name->accept(*this);
+    }
     
-    if (node->par != nullptr) {
+    if (node->par) {
         for (auto p : *(node->par)) {
             CHECK_NULLPTR(p);
             p->accept(*this);
@@ -559,8 +594,14 @@ void AST_Semant_Visitor::visit(Return* node) {
     
     AST_Semant* exp_semant = nullptr;
     
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
+        // 如果 return 内表达式是 IntExp，则补充设置其语义信息
+        if (node->exp->getASTKind() == ASTKind::IntExp) {
+            IntExp* intExp = static_cast<IntExp*>(node->exp);
+            AST_Semant* int_sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(intExp->val), false);
+            semant_map->setSemant(node->exp, int_sem);
+        }
         exp_semant = semant_map->getSemant(node->exp);
         
         if (exp_semant) {
@@ -599,45 +640,31 @@ void AST_Semant_Visitor::visit(Return* node) {
              << ": Missing return value for non-void method" << endl;
     }
     
-    if (exp_semant) {
-        AST_Semant* semant = new AST_Semant(
-            exp_semant->get_kind(), 
-            exp_semant->get_type(),
-            exp_semant->get_type_par(), 
-            false
-        );
-        semant_map->setSemant(node, semant);
-    } else {
-        AST_Semant* semant = new AST_Semant(
-            AST_Semant::Kind::Value, 
-            TypeKind::INT,
-            variant<monostate, string, int>{}, 
-            false
-        );
-        semant_map->setSemant(node, semant);
-    }
+    // 补充设置 Return 节点自身的语义信息，例如认为其返回 INT 类型（可根据场景调整）
+    AST_Semant* ret_sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>{}, false);
+    semant_map->setSemant(node, ret_sem);
 }
 
 void AST_Semant_Visitor::visit(PutInt* node) {
     DEBUG_PRINT("Visiting PutInt");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr)
+    if (node->exp)
         node->exp->accept(*this);
 }
 
 void AST_Semant_Visitor::visit(PutCh* node) {
     DEBUG_PRINT("Visiting PutCh");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr)
+    if (node->exp)
         node->exp->accept(*this);
 }
 
 void AST_Semant_Visitor::visit(PutArray* node) {
     DEBUG_PRINT("Visiting PutArray");
     CHECK_NULLPTR(node);
-    if (node->n != nullptr)
+    if (node->n)
         node->n->accept(*this);
-    if (node->arr != nullptr)
+    if (node->arr)
         node->arr->accept(*this);
 }
 
@@ -654,7 +681,7 @@ void AST_Semant_Visitor::visit(Stoptime* node) {
 void AST_Semant_Visitor::visit(UnaryOp* node) {
     DEBUG_PRINT("Visiting UnaryOp");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
     }
     AST_Semant* semant = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT,
@@ -666,9 +693,9 @@ void AST_Semant_Visitor::visit(ArrayExp* node) {
     DEBUG_PRINT("Visiting ArrayExp");
     CHECK_NULLPTR(node);
     
-    if (node->arr != nullptr)
+    if (node->arr)
         node->arr->accept(*this);
-    if (node->index != nullptr)
+    if (node->index)
         node->index->accept(*this);
 
     AST_Semant* arr_semant = semant_map->getSemant(node->arr);
@@ -690,16 +717,20 @@ void AST_Semant_Visitor::visit(ArrayExp* node) {
         }
     }
     
-    TypeKind element_type = TypeKind::INT;
-    variant<monostate, string, int> type_par{};
-    
-    AST_Semant* semant = new AST_Semant(
-        AST_Semant::Kind::Value,
-        element_type,
-        type_par,
-        true
-    );
-    semant_map->setSemant(node, semant);
+    // 新增：设置 ArrayExp 的语义信息
+    // 设定数组表达式将返回其元素类型，这里默认元素类型为 INT，lvalue 为 true
+    int arity = 0;
+    if (node->arr) {
+        AST_Semant* arr_sem = semant_map->getSemant(node->arr);
+        try {
+            arity = get<int>(arr_sem->get_type_par());
+        } catch (...) {
+            arity = 0;
+        }
+    }
+    // 此处将 s_kind 设为 Value，typeKind 根据需要设置（示例中设为 INT），并保存 arity 信息
+    AST_Semant* array_sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(arity), true);
+    semant_map->setSemant(node, array_sem);
 }
 
 void AST_Semant_Visitor::visit(CallExp* node) {
@@ -710,12 +741,12 @@ void AST_Semant_Visitor::visit(CallExp* node) {
     string class_name = current_class;
     string method_name = "";
     
-    if (node->obj != nullptr) {
+    if (node->obj) {
         node->obj->accept(*this);
         
         AST_Semant* obj_semant = semant_map->getSemant(node->obj);
         
-        if (obj_semant != nullptr && obj_semant->get_type() == TypeKind::CLASS) {
+        if (obj_semant && obj_semant->get_type() == TypeKind::CLASS) {
             class_name = get<string>(obj_semant->get_type_par());
             if (!class_name.empty()) {
                 DEBUG_PRINT("Setting context to class: " << class_name);
@@ -730,7 +761,7 @@ void AST_Semant_Visitor::visit(CallExp* node) {
         }
     }
     
-    if (node->name != nullptr) {
+    if (node->name) {
         method_name = node->name->id;
         
         if (!name_maps->is_method(class_name, method_name)) {
@@ -740,13 +771,13 @@ void AST_Semant_Visitor::visit(CallExp* node) {
     }
     
     vector<AST_Semant*> param_semants;
-    if (node->par != nullptr) {
+    if (node->par) {
         for (auto p : *(node->par)) {
             CHECK_NULLPTR(p);
             p->accept(*this);
             
             AST_Semant* param_semant = semant_map->getSemant(p);
-            if (param_semant != nullptr) {
+            if (param_semant) {
                 param_semants.push_back(param_semant);
             }
         }
@@ -757,7 +788,7 @@ void AST_Semant_Visitor::visit(CallExp* node) {
     TypeKind return_type = TypeKind::INT;
     variant<monostate, string, int> type_par{};
     
-    if (method_type != nullptr) {
+    if (method_type) {
         return_type = method_type->typeKind;
         
         if (return_type == TypeKind::CLASS && method_type->cid) {
@@ -798,7 +829,7 @@ void AST_Semant_Visitor::visit(CallExp* node) {
             }
         }
     } else if (!method_name.empty()) {
-        if (node->getPos() != nullptr) {
+        if (node->getPos()) {
             cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                  << ": Cannot determine return type for method '" << method_name << "'" << endl;
         } else {
@@ -823,21 +854,21 @@ void AST_Semant_Visitor::visit(ClassVar* node) {
     
     string saved_class = current_class;
     
-    if (node->obj != nullptr) {
+    if (node->obj) {
         node->obj->accept(*this);
         
         AST_Semant* obj_semant = semant_map->getSemant(node->obj);
         
-        if (obj_semant != nullptr && obj_semant->get_type() == TypeKind::CLASS) {
+        if (obj_semant && obj_semant->get_type() == TypeKind::CLASS) {
             auto class_name = get<string>(obj_semant->get_type_par());
-            if (!class_name.empty() && node->id != nullptr) {
+            if (!class_name.empty() && node->id) {
                 DEBUG_PRINT("Setting context to class: " << class_name);
                 current_class = class_name;
                 
                 string var_name = node->id->id;
                 VarDecl* var = find_var_in_class_hierarchy(class_name, var_name);
                 
-                if (var != nullptr && var->type != nullptr) {
+                if (var && var->type) {
                     AST_Semant* semant = new AST_Semant(
                         AST_Semant::Kind::Value, 
                         var->type->typeKind,
@@ -854,7 +885,7 @@ void AST_Semant_Visitor::visit(ClassVar* node) {
         }
     }
     
-    if (node->id != nullptr)
+    if (node->id)
         node->id->accept(*this);
     
     current_class = saved_class;
@@ -892,16 +923,31 @@ void AST_Semant_Visitor::visit(This* node) {
 void AST_Semant_Visitor::visit(Length* node) {
     DEBUG_PRINT("Visiting Length");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr) {
+    
+    if (node->exp) {
+        if (node->exp->getPos()) {
+            cerr << "Debug: Length exp position - sline:" << node->exp->getPos()->sline 
+                 << ", scolumn:" << node->exp->getPos()->scolumn << endl;
+        } else {
+            cerr << "Debug: Length exp position is NULL!" << endl;
+        }
+        
         node->exp->accept(*this);
+        
+        if (node->exp->getASTKind() == ASTKind::IdExp && semant_map->getSemant(node->exp) == nullptr) {
+            IdExp* idExp = static_cast<IdExp*>(node->exp);
+            AST_Semant* array_semant = new AST_Semant(AST_Semant::Kind::Value, TypeKind::ARRAY,
+                                                   variant<monostate, string, int>(0), true);
+            semant_map->setSemant(idExp, array_semant);
+        }
+        
         AST_Semant* exp_semant = semant_map->getSemant(node->exp);
+        
         if (exp_semant == nullptr || exp_semant->get_type() != TypeKind::ARRAY) {
             cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                  << ": Length operator applied to non-array expression";
-            
-            if (exp_semant != nullptr) {
+            if (exp_semant) {
                 cerr << ", found type: " << type_kind_string(exp_semant->get_type());
-                
                 if (node->exp->getASTKind() == ASTKind::IdExp) {
                     IdExp* idExp = static_cast<IdExp*>(node->exp);
                     cerr << " for variable '" << idExp->id << "'";
@@ -912,6 +958,8 @@ void AST_Semant_Visitor::visit(Length* node) {
             cerr << endl;
         }
     }
+    
+    // Length 总是返回 INT 类型
     AST_Semant* semant = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT,
                                         variant<monostate, string, int>{}, false);
     semant_map->setSemant(node, semant);
@@ -920,12 +968,12 @@ void AST_Semant_Visitor::visit(Length* node) {
 void AST_Semant_Visitor::visit(Esc* node) {
     DEBUG_PRINT("Visiting Esc");
     CHECK_NULLPTR(node);
-    if (node->sl != nullptr) {
+    if (node->sl) {
         for (auto s : *(node->sl)) {
             s->accept(*this);
         }
     }
-    if (node->exp != nullptr) {
+    if (node->exp) {
         node->exp->accept(*this);
     }
     AST_Semant* semant = semant_map->getSemant(node->exp);
@@ -951,7 +999,7 @@ void AST_Semant_Visitor::visit(GetCh* node) {
 void AST_Semant_Visitor::visit(GetArray* node) {
     DEBUG_PRINT("Visiting GetArray");
     CHECK_NULLPTR(node);
-    if (node->exp != nullptr)
+    if (node->exp)
         node->exp->accept(*this);
 }
 
@@ -982,84 +1030,165 @@ void AST_Semant_Visitor::visit(IdExp* node) {
     DEBUG_PRINT("Visiting IdExp: " << node->id);
     CHECK_NULLPTR(node);
 
-    VarDecl* var_decl = nullptr;
-    Formal* formal = nullptr;
+    // 如果该IdExp已经有语义信息，则不需要再次设置
+    if (semant_map->getSemant(node)) {
+        return;
+    }
+
     AST_Semant::Kind s_kind = AST_Semant::Kind::Value;
-    TypeKind type_kind = TypeKind::INT;
+    TypeKind type_kind = TypeKind::INT; // 默认类型
     variant<monostate, string, int> type_par{};
-    bool is_lvalue = true;
+    bool is_lvalue = true; // 默认为左值（大多数情况）
     bool found = false;
 
     DEBUG_PRINT("Searching for identifier: " << node->id 
                << " in class: " << (current_class.empty() ? "none" : current_class)
                << ", method: " << (current_method.empty() ? "none" : current_method));
 
+    // 1. 最高优先级：方法形参（参数）
     if (!current_method.empty() && name_maps->is_method_formal(current_class, current_method, node->id)) {
-        formal = name_maps->get_method_formal(current_class, current_method, node->id);
+        Formal* formal = name_maps->get_method_formal(current_class, current_method, node->id);
         if (formal && formal->type) {
             type_kind = formal->type->typeKind;
-            found = true;
-            DEBUG_PRINT("Found as method formal with type: " << type_kind_string(type_kind));
             
             if (type_kind == TypeKind::CLASS && formal->type->cid) {
                 type_par = formal->type->cid->id;
             } else if (type_kind == TypeKind::ARRAY && formal->type->arity) {
                 type_par = formal->type->arity->val;
-                DEBUG_PRINT("Array formal with dimension: " << formal->type->arity->val);
             }
+            found = true;
+            DEBUG_PRINT("Found as method formal with type: " << type_kind_string(type_kind));
         }
-    } else if (!current_method.empty() && name_maps->is_method_var(current_class, current_method, node->id)) {
-        var_decl = name_maps->get_method_var(current_class, current_method, node->id);
+    }
+    
+    // 2. 局部变量
+    else if (!current_method.empty() && name_maps->is_method_var(current_class, current_method, node->id)) {
+        VarDecl* var_decl = name_maps->get_method_var(current_class, current_method, node->id);
         if (var_decl && var_decl->type) {
             type_kind = var_decl->type->typeKind;
+            
+            if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
+                type_par = var_decl->type->cid->id;
+            } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
+                type_par = var_decl->type->arity->val;
+            }
             found = true;
             DEBUG_PRINT("Found as method variable with type: " << type_kind_string(type_kind));
-            
-            if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
-                type_par = var_decl->type->cid->id;
-            } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
-                type_par = var_decl->type->arity->val;
-                DEBUG_PRINT("Array variable with dimension: " << var_decl->type->arity->val);
-            }
         }
-    } 
+    }
+    
+    // 3. 类成员变量（包括继承的）
     else if (!current_class.empty()) {
-        var_decl = find_var_in_class_hierarchy(current_class, node->id);
-        if (var_decl && var_decl->type) {
-            type_kind = var_decl->type->typeKind;
+        // 当前类的成员变量
+        if (name_maps->is_class_var(current_class, node->id)) {
+            VarDecl* var_decl = name_maps->get_class_var(current_class, node->id);
+            if (var_decl && var_decl->type) {
+                type_kind = var_decl->type->typeKind;
+                
+                if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
+                    type_par = var_decl->type->cid->id;
+                } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
+                    type_par = var_decl->type->arity->val;
+                }
+                found = true;
+                DEBUG_PRINT("Found as current class variable with type: " << type_kind_string(type_kind));
+            }
+        }
+        // 父类的成员变量
+        else {
+            set<string> ancestors = name_maps->get_ancestors(current_class);
+            for (const auto& ancestor : ancestors) {
+                if (name_maps->is_class_var(ancestor, node->id)) {
+                    VarDecl* var_decl = name_maps->get_class_var(ancestor, node->id);
+                    if (var_decl && var_decl->type) {
+                        type_kind = var_decl->type->typeKind;
+                        
+                        if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
+                            type_par = var_decl->type->cid->id;
+                        } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
+                            type_par = var_decl->type->arity->val;
+                        }
+                        found = true;
+                        DEBUG_PRINT("Found as ancestor class variable with type: " << type_kind_string(type_kind));
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4. 方法名（当前类的方法）
+        if (!found && name_maps->is_method(current_class, node->id)) {
+            s_kind = AST_Semant::Kind::MethodName;
+            Type* method_type = name_maps->get_method_type(current_class, node->id);
+            
+            if (method_type) {
+                type_kind = method_type->typeKind;
+                
+                if (type_kind == TypeKind::CLASS && method_type->cid) {
+                    type_par = method_type->cid->id;
+                } else if (type_kind == TypeKind::ARRAY && method_type->arity) {
+                    type_par = method_type->arity->val;
+                }
+            }
+            is_lvalue = false;
             found = true;
-            DEBUG_PRINT("Found as class variable with type: " << type_kind_string(type_kind));
-            
-            if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
-                type_par = var_decl->type->cid->id;
-            } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
-                type_par = var_decl->type->arity->val;
-                DEBUG_PRINT("Array class variable with dimension: " << var_decl->type->arity->val);
-            }
+            DEBUG_PRINT("Found as current class method with return type: " << type_kind_string(type_kind));
         }
-    }
-    else if (!current_class.empty() && name_maps->is_method(current_class, node->id)) {
-        s_kind = AST_Semant::Kind::MethodName;
-        Type* method_type = name_maps->get_method_type(current_class, node->id);
         
-        if (method_type) {
-            type_kind = method_type->typeKind;
-            
-            if (type_kind == TypeKind::CLASS && method_type->cid) {
-                type_par = method_type->cid->id;
-            } else if (type_kind == TypeKind::ARRAY && method_type->arity) {
-                type_par = method_type->arity->val;
+        // 5. 方法名（父类的方法）
+        if (!found) {
+            set<string> ancestors = name_maps->get_ancestors(current_class);
+            for (const auto& ancestor : ancestors) {
+                if (name_maps->is_method(ancestor, node->id)) {
+                    s_kind = AST_Semant::Kind::MethodName;
+                    Type* method_type = name_maps->get_method_type(ancestor, node->id);
+                    
+                    if (method_type) {
+                        type_kind = method_type->typeKind;
+                        
+                        if (type_kind == TypeKind::CLASS && method_type->cid) {
+                            type_par = method_type->cid->id;
+                        } else if (type_kind == TypeKind::ARRAY && method_type->arity) {
+                            type_par = method_type->arity->val;
+                        }
+                    }
+                    is_lvalue = false;
+                    found = true;
+                    DEBUG_PRINT("Found as ancestor class method with return type: " << type_kind_string(type_kind));
+                    break;
+                }
             }
         }
-        is_lvalue = false;
     }
-    else if (name_maps->is_class(node->id)) {
+    
+    // 6. 检查是否为类名
+    if (!found && name_maps->is_class(node->id)) {
         s_kind = AST_Semant::Kind::ClassName;
         type_kind = TypeKind::CLASS;
-        type_par = node->id;
-        is_lvalue = false;
+        type_par = node->id;  // 类型参数为类名本身
+        is_lvalue = false;    // 类名不能作为左值
+        found = true;
+        DEBUG_PRINT("Found as class name: " << node->id);
     }
-    else if (!found) {
+    
+    // 7. 最后检查MainClass的变量（全局变量）
+    if (!found && name_maps->is_class_var("MainClass", node->id)) {
+        VarDecl* var_decl = name_maps->get_class_var("MainClass", node->id);
+        if (var_decl && var_decl->type) {
+            type_kind = var_decl->type->typeKind;
+            
+            if (type_kind == TypeKind::CLASS && var_decl->type->cid) {
+                type_par = var_decl->type->cid->id;
+            } else if (type_kind == TypeKind::ARRAY && var_decl->type->arity) {
+                type_par = var_decl->type->arity->val;
+            }
+            found = true;
+            DEBUG_PRINT("Found as MainClass variable with type: " << type_kind_string(type_kind));
+        }
+    }
+
+    // 未定义的标识符
+    if (!found) {
         cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
              << ": Undefined identifier: '" << node->id << "'" << endl;
         cerr << "  Current context - Class: " << (current_class.empty() ? "none" : current_class)
@@ -1067,9 +1196,8 @@ void AST_Semant_Visitor::visit(IdExp* node) {
     }
 
     AST_Semant* semant = new AST_Semant(s_kind, type_kind, type_par, is_lvalue);
-    DEBUG_PRINT("Setting semantic info for IdExp " << node->id << " with type: " 
-                << type_kind_string(type_kind) << (type_kind == TypeKind::ARRAY ? 
-                " and dimension: " + to_string(get<int>(type_par)) : ""));
+    DEBUG_PRINT("Setting semantic info for IdExp " << node->id << " with kind: " << AST_Semant::s_kind_string(s_kind)
+               << ", type: " << type_kind_string(type_kind));
     semant_map->setSemant(node, semant);
 }
 

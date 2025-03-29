@@ -16,10 +16,10 @@ using namespace fdmj;
 void AST_Name_Map_Visitor::visit(Program *node) {
   DEBUG_PRINT("Visiting Program");
   CHECK_NULLPTR(node);
-  if (node->main != nullptr) {
+  if (node->main) {
     node->main->accept(*this);
   }
-  if (node->cdl != nullptr) {
+  if (node->cdl) {
     for (auto cl : *(node->cdl)) {
       CHECK_NULLPTR(cl);
       cl->accept(*this);
@@ -31,40 +31,33 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
   DEBUG_PRINT("Visiting MainMethod");
   CHECK_NULLPTR(node);
   
-  // 将MainMethod当成一个特殊的class，命名为"MainClass"
   string class_name = "MainClass";
   string method_name = "^_main";
   
-  // 设置当前上下文
   current_class = class_name;
   current_method = method_name;
   
-  // 添加类和方法到名称映射
   name_maps->add_class(class_name);
   name_maps->add_method(class_name, method_name);
   
-  // 初始化形参列表
   current_formal_list.clear();
   
-  // 为主方法添加一个返回值形参（视为void类型）
   string return_var_name = "^_method_return";
-  Type* void_type = new Type(node->getPos());  // 默认类型为INT，这里用作void
-  Formal* return_formal = new Formal(node->getPos(), void_type, new IdExp(node->getPos(), return_var_name));
+  Type* main_type = new Type(node->getPos());
+  Formal* return_formal = new Formal(node->getPos(), main_type, new IdExp(node->getPos(), return_var_name));
   
-  // 添加到方法形参中
   name_maps->add_method_formal(class_name, method_name, return_var_name, return_formal);
   current_formal_list.push_back(return_var_name);
   
-  // 添加方法形参列表
   name_maps->add_method_formal_list(class_name, method_name, current_formal_list);
   
-  if (node->vdl != nullptr) {
+  if (node->vdl) {
     for (auto vd : *(node->vdl)) {
       CHECK_NULLPTR(vd);
       vd->accept(*this);
     }
   }
-  if (node->sl != nullptr) {
+  if (node->sl) {
     for (auto s : *(node->sl)) {
       CHECK_NULLPTR(s);
       s->accept(*this);
@@ -87,14 +80,14 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
   name_maps->add_class(class_name);
   
   // 先处理类自己的变量和方法
-  if (node->vdl != nullptr) {
+  if (node->vdl) {
     for (auto vd : *(node->vdl)) {
       CHECK_NULLPTR(vd); // 检查每个变量声明指针
       vd->accept(*this);
     }
   }
   
-  if (node->mdl != nullptr) {
+  if (node->mdl) {
     for (auto md : *(node->mdl)) {
       CHECK_NULLPTR(md);
       md->accept(*this);
@@ -102,7 +95,7 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
   }
   
   // 然后处理继承关系
-  if (node->eid != nullptr) {
+  if (node->eid) {
     CHECK_NULLPTR(node->eid); // 增加对 eid 的空指针检查
     string parent_name = node->eid->id;
     
@@ -173,10 +166,10 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
   }
   
   // 访问id和eid
-  if (node->id != nullptr) {
+  if (node->id) {
     node->id->accept(*this);
   }
-  if (node->eid != nullptr) {
+  if (node->eid) {
     node->eid->accept(*this);
   }
   
@@ -188,12 +181,12 @@ void AST_Name_Map_Visitor::visit(Type *node) {
   DEBUG_PRINT("Visiting Type");
   CHECK_NULLPTR(node);
   if (node->typeKind == TypeKind::CLASS) {
-    if (node->cid != nullptr) {
+    if (node->cid) {
       node->cid->accept(*this);
     }
   }
   if (node->typeKind == TypeKind::ARRAY) {
-    if (node->arity != nullptr) {
+    if (node->arity) {
       node->arity->accept(*this);
     }
   }
@@ -215,10 +208,10 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
     }
   }
   
-  if (node->type != nullptr) {
+  if (node->type) {
     node->type->accept(*this);
   }
-  if (node->id != nullptr) {
+  if (node->id) {
     node->id->accept(*this);
   }
   if (node->init.index() == 1) {
@@ -227,7 +220,7 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
     ie->accept(*this);
   } else if (node->init.index() == 2) {
     auto vec = get<vector<IntExp *> *>(node->init);
-    if (vec != nullptr) {
+    if (vec) {
       for (auto e : *vec) {
         CHECK_NULLPTR(e); // 检查每个数组元素指针
         e->accept(*this);
@@ -250,7 +243,7 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   current_formal_list.clear();
   in_formal = true;
   
-  if (node->fl != nullptr) {
+  if (node->fl) {
     for (auto f : *(node->fl)) {
       CHECK_NULLPTR(f); // 检查形参指针
       f->accept(*this);
@@ -259,7 +252,7 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   
   // 添加方法返回值作为特殊形参
   string return_var_name = "^_method_return";
-  if (node->type != nullptr) {
+  if (node->type) {
     // 存储方法的返回类型
     name_maps->add_method_type(current_class, method_name, node->type->clone());
     
@@ -272,20 +265,20 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   name_maps->add_method_formal_list(current_class, method_name, current_formal_list);
   in_formal = false;
   
-  if (node->type != nullptr) {
+  if (node->type) {
     node->type->accept(*this);
   }
-  if (node->id != nullptr) {
+  if (node->id) {
     node->id->accept(*this);
   }
   
-  if (node->vdl != nullptr) {
+  if (node->vdl) {
     for (auto vd : *(node->vdl)) {
       CHECK_NULLPTR(vd);
       vd->accept(*this);
     }
   }
-  if (node->sl != nullptr) {
+  if (node->sl) {
     for (auto s : *(node->sl)) {
       CHECK_NULLPTR(s);
       s->accept(*this);
@@ -308,10 +301,10 @@ void AST_Name_Map_Visitor::visit(Formal *node) {
     current_formal_list.push_back(var_name);
   }
   
-  if (node->type != nullptr) {
+  if (node->type) {
     node->type->accept(*this);
   }
-  if (node->id != nullptr) {
+  if (node->id) {
     node->id->accept(*this);
   }
 }
@@ -319,7 +312,7 @@ void AST_Name_Map_Visitor::visit(Formal *node) {
 void AST_Name_Map_Visitor::visit(Nested *node) {
   DEBUG_PRINT("Visiting Nested");
   CHECK_NULLPTR(node);
-  if (node->sl != nullptr) {
+  if (node->sl) {
     for (auto s : *(node->sl)) {
       CHECK_NULLPTR(s);
       s->accept(*this);
@@ -330,13 +323,13 @@ void AST_Name_Map_Visitor::visit(Nested *node) {
 void AST_Name_Map_Visitor::visit(If *node) {
   DEBUG_PRINT("Visiting If");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
-  if (node->stm1 != nullptr) {
+  if (node->stm1) {
     node->stm1->accept(*this);
   }
-  if (node->stm2 != nullptr) {
+  if (node->stm2) {
     node->stm2->accept(*this);
   }
 }
@@ -344,10 +337,10 @@ void AST_Name_Map_Visitor::visit(If *node) {
 void AST_Name_Map_Visitor::visit(While *node) {
   DEBUG_PRINT("Visiting While");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
-  if (node->stm != nullptr) {
+  if (node->stm) {
     node->stm->accept(*this);
   }
 }
@@ -355,10 +348,10 @@ void AST_Name_Map_Visitor::visit(While *node) {
 void AST_Name_Map_Visitor::visit(Assign *node) {
   DEBUG_PRINT("Visiting Assign");
   CHECK_NULLPTR(node);
-  if (node->left != nullptr) {
+  if (node->left) {
     node->left->accept(*this);
   }
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
@@ -366,13 +359,13 @@ void AST_Name_Map_Visitor::visit(Assign *node) {
 void AST_Name_Map_Visitor::visit(CallStm *node) {
   DEBUG_PRINT("Visiting CallStm");
   CHECK_NULLPTR(node);
-  if (node->obj != nullptr) {
+  if (node->obj) {
     node->obj->accept(*this);
   }
-  if (node->name != nullptr) {
+  if (node->name) {
     node->name->accept(*this);
   }
-  if (node->par != nullptr) {
+  if (node->par) {
     for (auto p : *(node->par)) {
       CHECK_NULLPTR(p); // 检查每个实参指针
       p->accept(*this);
@@ -393,7 +386,7 @@ void AST_Name_Map_Visitor::visit(Break *node) {
 void AST_Name_Map_Visitor::visit(Return *node) {
   DEBUG_PRINT("Visiting Return");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
@@ -401,7 +394,7 @@ void AST_Name_Map_Visitor::visit(Return *node) {
 void AST_Name_Map_Visitor::visit(PutInt *node) {
   DEBUG_PRINT("Visiting PutInt");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
@@ -409,7 +402,7 @@ void AST_Name_Map_Visitor::visit(PutInt *node) {
 void AST_Name_Map_Visitor::visit(PutCh *node) {
   DEBUG_PRINT("Visiting PutCh");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
@@ -417,10 +410,10 @@ void AST_Name_Map_Visitor::visit(PutCh *node) {
 void AST_Name_Map_Visitor::visit(PutArray *node) {
   DEBUG_PRINT("Visiting PutArray");
   CHECK_NULLPTR(node);
-  if (node->n != nullptr) {
+  if (node->n) {
     node->n->accept(*this);
   }
-  if (node->arr != nullptr) {
+  if (node->arr) {
     node->arr->accept(*this);
   }
 }
@@ -438,10 +431,10 @@ void AST_Name_Map_Visitor::visit(Stoptime *node) {
 void AST_Name_Map_Visitor::visit(BinaryOp *node) {
   DEBUG_PRINT("Visiting BinaryOp");
   CHECK_NULLPTR(node);
-  if (node->left != nullptr) {
+  if (node->left) {
     node->left->accept(*this);
   }
-  if (node->right != nullptr) {
+  if (node->right) {
     node->right->accept(*this);
   }
 }
@@ -449,7 +442,7 @@ void AST_Name_Map_Visitor::visit(BinaryOp *node) {
 void AST_Name_Map_Visitor::visit(UnaryOp *node) {
   DEBUG_PRINT("Visiting UnaryOp");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
@@ -457,10 +450,10 @@ void AST_Name_Map_Visitor::visit(UnaryOp *node) {
 void AST_Name_Map_Visitor::visit(ArrayExp *node) {
   DEBUG_PRINT("Visiting ArrayExp");
   CHECK_NULLPTR(node);
-  if (node->arr != nullptr) {
+  if (node->arr) {
     node->arr->accept(*this);
   }
-  if (node->index != nullptr) {
+  if (node->index) {
     node->index->accept(*this);
   }
 }
@@ -468,13 +461,13 @@ void AST_Name_Map_Visitor::visit(ArrayExp *node) {
 void AST_Name_Map_Visitor::visit(CallExp *node) {
   DEBUG_PRINT("Visiting CallExp");
   CHECK_NULLPTR(node);
-  if (node->obj != nullptr) {
+  if (node->obj) {
     node->obj->accept(*this);
   }
-  if (node->name != nullptr) {
+  if (node->name) {
     node->name->accept(*this);
   }
-  if (node->par != nullptr) {
+  if (node->par) {
     for (auto p : *(node->par)) {
       CHECK_NULLPTR(p); // 检查每个实参指针
       p->accept(*this);
@@ -485,10 +478,10 @@ void AST_Name_Map_Visitor::visit(CallExp *node) {
 void AST_Name_Map_Visitor::visit(ClassVar *node) {
   DEBUG_PRINT("Visiting ClassVar");
   CHECK_NULLPTR(node);
-  if (node->obj != nullptr) {
+  if (node->obj) {
     node->obj->accept(*this);
   }
-  if (node->id != nullptr) {
+  if (node->id) {
     node->id->accept(*this);
   }
 }
@@ -506,7 +499,7 @@ void AST_Name_Map_Visitor::visit(This *node) {
 void AST_Name_Map_Visitor::visit(Length *node) {
   DEBUG_PRINT("Visiting Length");
   CHECK_NULLPTR(node);
-  if (node->exp != nullptr) {
+  if (node->exp) {
     node->exp->accept(*this);
   }
 }
