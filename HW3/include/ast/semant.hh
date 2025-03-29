@@ -80,7 +80,8 @@ class AST_Semant_Visitor : public AST_Visitor {
 private:
     AST_Semant_Map *semant_map; //this is the semantic information map for all (sub)expressions
     Name_Maps* const name_maps; //this is the map for all names in the program
-    //you may add other members here 
+    string current_class;
+    string current_method;
 public:
     //Change this constructor if more members are added above (if necessary)
     AST_Semant_Visitor(Name_Maps* name_maps) : name_maps(name_maps) {

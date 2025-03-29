@@ -13,15 +13,9 @@
 using namespace std;
 using namespace fdmj;
 
-// TODO
-
 void AST_Name_Map_Visitor::visit(Program *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Program" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Program");
+  CHECK_NULLPTR(node);
   if (node->main != nullptr) {
     node->main->accept(*this);
   }
@@ -32,14 +26,9 @@ void AST_Name_Map_Visitor::visit(Program *node) {
   }
 }
 
-// rest of the visit functions here
 void AST_Name_Map_Visitor::visit(MainMethod *node) {
-#ifdef DEBUG
-  std::cout << "Visiting MainMethod" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting MainMethod");
+  CHECK_NULLPTR(node);
   
   // 将MainMethod当成一个特殊的class，命名为"MainClass"
   string class_name = "MainClass";
@@ -85,12 +74,8 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
 }
 
 void AST_Name_Map_Visitor::visit(ClassDecl *node) {
-#ifdef DEBUG
-  std::cout << "Visiting ClassDecl" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting ClassDecl");
+  CHECK_NULLPTR(node);
   
   // 记录类名和继承关系
   string class_name = node->id->id;
@@ -126,12 +111,8 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Type *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Type" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Type");
+  CHECK_NULLPTR(node);
   if (node->typeKind == TypeKind::CLASS) {
     if (node->cid != nullptr) {
       node->cid->accept(*this);
@@ -145,12 +126,8 @@ void AST_Name_Map_Visitor::visit(Type *node) {
 }
 
 void AST_Name_Map_Visitor::visit(VarDecl *node) {
-#ifdef DEBUG
-  std::cout << "Visiting VarDecl" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting VarDecl");
+  CHECK_NULLPTR(node);
   
   // 根据上下文确定是类变量还是方法变量
   if (!current_class.empty()) {
@@ -170,21 +147,17 @@ void AST_Name_Map_Visitor::visit(VarDecl *node) {
     node->id->accept(*this);
   }
   if (node->init.index() == 1) {
-    std::get<IntExp *>(node->init)->accept(*this);
+    get<IntExp *>(node->init)->accept(*this);
   } else if (node->init.index() == 2) {
-    for (auto e : *(std::get<vector<IntExp *> *>(node->init))) {
+    for (auto e : *(get<vector<IntExp *> *>(node->init))) {
       e->accept(*this);
     }
   }
 }
 
 void AST_Name_Map_Visitor::visit(MethodDecl *node) {
-#ifdef DEBUG
-  std::cout << "Visiting MethodDecl" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting MethodDecl");
+  CHECK_NULLPTR(node);
   
   // 记录方法名
   string method_name = node->id->id;
@@ -238,12 +211,8 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Formal *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Formal" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Formal");
+  CHECK_NULLPTR(node);
   
   // 记录方法形参
   if (!current_class.empty() && !current_method.empty() && in_formal) {
@@ -261,12 +230,8 @@ void AST_Name_Map_Visitor::visit(Formal *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Nested *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Nested" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Nested");
+  CHECK_NULLPTR(node);
   if (node->sl != nullptr) {
     for (auto s : *(node->sl)) {
       s->accept(*this);
@@ -275,12 +240,8 @@ void AST_Name_Map_Visitor::visit(Nested *node) {
 }
 
 void AST_Name_Map_Visitor::visit(If *node) {
-#ifdef DEBUG
-  std::cout << "Visiting If" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting If");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
@@ -293,12 +254,8 @@ void AST_Name_Map_Visitor::visit(If *node) {
 }
 
 void AST_Name_Map_Visitor::visit(While *node) {
-#ifdef DEBUG
-  std::cout << "Visiting While" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting While");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
@@ -308,12 +265,8 @@ void AST_Name_Map_Visitor::visit(While *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Assign *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Assign" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Assign");
+  CHECK_NULLPTR(node);
   if (node->left != nullptr) {
     node->left->accept(*this);
   }
@@ -323,12 +276,8 @@ void AST_Name_Map_Visitor::visit(Assign *node) {
 }
 
 void AST_Name_Map_Visitor::visit(CallStm *node) {
-#ifdef DEBUG
-  std::cout << "Visiting CallStm" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting CallStm");
+  CHECK_NULLPTR(node);
   if (node->obj != nullptr) {
     node->obj->accept(*this);
   }
@@ -343,66 +292,42 @@ void AST_Name_Map_Visitor::visit(CallStm *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Continue *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Continue" << std::endl;
-#endif
- if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Continue");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(Break *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Break" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Break");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(Return *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Return" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Return");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
 }
 
 void AST_Name_Map_Visitor::visit(PutInt *node) {
-#ifdef DEBUG
-  std::cout << "Visiting PutInt" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting PutInt");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
 }
 
 void AST_Name_Map_Visitor::visit(PutCh *node) {
-#ifdef DEBUG
-  std::cout << "Visiting PutCh" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting PutCh");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
 }
 
 void AST_Name_Map_Visitor::visit(PutArray *node) {
-#ifdef DEBUG
-  std::cout << "Visiting PutArray" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting PutArray");
+  CHECK_NULLPTR(node);
   if (node->n != nullptr) {
     node->n->accept(*this);
   }
@@ -412,30 +337,18 @@ void AST_Name_Map_Visitor::visit(PutArray *node) {
 }
 
 void AST_Name_Map_Visitor::visit(Starttime *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Starttime" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Starttime");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(Stoptime *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Stoptime" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Stoptime");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(BinaryOp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting BinaryOp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting BinaryOp");
+  CHECK_NULLPTR(node);
   if (node->left != nullptr) {
     node->left->accept(*this);
   }
@@ -445,24 +358,16 @@ void AST_Name_Map_Visitor::visit(BinaryOp *node) {
 }
 
 void AST_Name_Map_Visitor::visit(UnaryOp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting UnaryOp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting UnaryOp");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
 }
 
 void AST_Name_Map_Visitor::visit(ArrayExp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting ArrayExp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting ArrayExp");
+  CHECK_NULLPTR(node);
   if (node->arr != nullptr) {
     node->arr->accept(*this);
   }
@@ -472,12 +377,8 @@ void AST_Name_Map_Visitor::visit(ArrayExp *node) {
 }
 
 void AST_Name_Map_Visitor::visit(CallExp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting CallExp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting CallExp");
+  CHECK_NULLPTR(node);
   if (node->obj != nullptr) {
     node->obj->accept(*this);
   }
@@ -492,12 +393,8 @@ void AST_Name_Map_Visitor::visit(CallExp *node) {
 }
 
 void AST_Name_Map_Visitor::visit(ClassVar *node) {
-#ifdef DEBUG
-  std::cout << "Visiting ClassVar" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting ClassVar");
+  CHECK_NULLPTR(node);
   if (node->obj != nullptr) {
     node->obj->accept(*this);
   }
@@ -507,94 +404,54 @@ void AST_Name_Map_Visitor::visit(ClassVar *node) {
 }
 
 void AST_Name_Map_Visitor::visit(BoolExp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting BoolExp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting BoolExp");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(This *node) {
-#ifdef DEBUG
-  std::cout << "Visiting This" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting This");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(Length *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Length" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Length");
+  CHECK_NULLPTR(node);
   if (node->exp != nullptr) {
     node->exp->accept(*this);
   }
 }
 
 void AST_Name_Map_Visitor::visit(Esc *node) {
-#ifdef DEBUG
-  std::cout << "Visiting Esc" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting Esc");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(GetInt *node) {
-#ifdef DEBUG
-  std::cout << "Visiting GetInt" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting GetInt");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(GetCh *node) {
-#ifdef DEBUG
-  std::cout << "Visiting GetCh" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting GetCh");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(GetArray *node) {
-#ifdef DEBUG
-  std::cout << "Visiting GetArray" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting GetArray");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(IdExp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting IdExp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting IdExp");
+  CHECK_NULLPTR(node);
 }
 
 void AST_Name_Map_Visitor::visit(IntExp *node) {
-  #ifdef DEBUG
-    std::cout << "Visiting IntExp" << std::endl;
-  #endif
-    if (node == nullptr) {
-      return;
-    }
-  }
+  DEBUG_PRINT("Visiting IntExp");
+  CHECK_NULLPTR(node);
+}
 
 void AST_Name_Map_Visitor::visit(OpExp *node) {
-#ifdef DEBUG
-  std::cout << "Visiting OpExp" << std::endl;
-#endif
-  if (node == nullptr) {
-    return;
-  }
+  DEBUG_PRINT("Visiting OpExp");
+  CHECK_NULLPTR(node);
 }

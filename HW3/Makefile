@@ -12,7 +12,7 @@ build:
 	cd $(BUILD_DIR) && ninja
 
 clean:
-	@find $(TEST_DIR) -type f \( \
+	@find $(TEST_DIR) -maxdepth 1 -type f \( \
 		-name "*.ast" -o -name "*.out"\
 		\) -exec $(RM) {} \;
 

@@ -84,9 +84,9 @@ identifier      [a-z_A-Z][a-z_A-Z0-9]*
 <INITIAL>"!" { return Token::NOT; }
 
 <INITIAL>{punctuation} { return yytext[0];}
-<INITIAL>{non_negative_integer} { copyValue(std::atoi(yytext)); return Token::NONNEGATIVEINT; }
+<INITIAL>{non_negative_integer} { copyValue(atoi(yytext)); return Token::NONNEGATIVEINT; }
 <INITIAL>{identifier} { copyValue(yytext); return Token::IDENTIFIER; }
-<INITIAL>. { std::cerr << "Illegal input " << yytext[0] << endl; return 0; }
+<INITIAL>. { cerr << "Illegal input " << yytext[0] << endl; return 0; }
 <COMMENT1>\n { ++currentLine; currentColumn = 1; BEGIN INITIAL; }
 <COMMENT1>. { }
 <COMMENT2>"*/" { BEGIN INITIAL; }

@@ -25,8 +25,8 @@
 #include <string>
 
 #ifdef DEBUG
-#define DEBUG_PRINT(msg) do { std::cerr << msg << std::endl; } while (0)
-#define DEBUG_PRINT2(msg, val) do { std::cerr << msg << " " << val << std::endl; } while (0)
+#define DEBUG_PRINT(msg) do { cerr << msg << endl; } while (0)
+#define DEBUG_PRINT2(msg, val) do { cerr << msg << " " << val << endl; } while (0)
 #else
 #define DEBUG_PRINT(msg) do { } while (0)
 #define DEBUG_PRINT2(msg, val) do { } while (0)
@@ -60,7 +60,7 @@
     namespace fdmj 
     {
         template<typename RHS>
-        void calcLocation(location_t &current, const RHS &rhs, const std::size_t n);
+        void calcLocation(location_t &current, const RHS &rhs, const size_t n);
     }
     
     #define YYLLOC_DEFAULT(Cur, Rhs, N) calcLocation(Cur, Rhs, N)
@@ -160,7 +160,7 @@ VARDECLLIST: /* empty */
   {
     DEBUG_PRINT("VarDecl VarDeclList");
     vector<VarDecl*> *v = $2;
-    v->push_back($1);
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
@@ -231,6 +231,7 @@ CONSTLIST: /* empty */
   {
     DEBUG_PRINT("Const ConstList");
     vector<IntExp*> *v = $2;
+    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -246,6 +247,7 @@ CONSTREST: /* empty */
   {
     DEBUG_PRINT("ConstRest");
     vector<IntExp*> *v = $3;
+    // v->push_back($2);
     v->insert(v->begin(), $2);
     $$ = v;
   }
@@ -261,8 +263,7 @@ STMLIST: /* empty */
   {
     DEBUG_PRINT("Stm Stmlist");
     vector<Stm*> *v = $2;
-    v->push_back($1);
-    rotate(v->begin(), v->end() - 1, v->end());
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
@@ -537,6 +538,7 @@ EXPLIST: /* empty */
   {
     DEBUG_PRINT("Exp ExpRest");
     vector<Exp*> *v = $2;
+    // v->push_back($1);
     v->insert(v->begin(), $1);
     $$ = v;
   }
@@ -552,6 +554,7 @@ EXPREST: /* empty */
   {
     DEBUG_PRINT("ExpRest");
     vector<Exp*> *v = $3;
+    // v->push_back($2);
     v->insert(v->begin(), $2);
     $$ = v;
   }
@@ -566,7 +569,8 @@ CLASSDECLLIST: /* empty */
   {
     DEBUG_PRINT("ClassDecl ClassDeclList");
     vector<ClassDecl*> *v = $2;
-    v->push_back($1);
+    // v->push_back($1);
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
@@ -594,7 +598,8 @@ METHODDECLLIST: /* empty */
   {
     DEBUG_PRINT("MethodDecl MethodDeclList");
     vector<MethodDecl*> *v = $2;
-    v->push_back($1);
+    // v->push_back($1);
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
@@ -635,6 +640,7 @@ FORMALLIST: /* empty */
   {
     DEBUG_PRINT("FormalList");
     vector<Formal*> *v = $3;
+    // v->push_back(new Formal(p, $1, $2));
     v->insert(v->begin(), new Formal(p, $1, $2));
     $$ = v;
   }
@@ -650,6 +656,7 @@ FORMALREST: /* empty */
   {
     DEBUG_PRINT("FormalRest");
     vector<Formal*> *v = $4;
+    // v->push_back(new Formal(p, $2, $3));
     v->insert(v->begin(), new Formal(p, $2, $3));
     $$ = v;
   }
@@ -670,16 +677,16 @@ int yywrap() {
 namespace fdmj 
 {
     template<typename RHS>
-    inline void calcLocation(location_t &current, const RHS &rhs, const std::size_t n)
+    inline void calcLocation(location_t &current, const RHS &rhs, const size_t n)
     {
         current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
                                     YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
         p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
     }
     
-    void ASTParser::error(const location_t &location, const std::string &message)
+    void ASTParser::error(const location_t &location, const string &message)
     {
-        std::cerr << "Error at lines " << location << ": " << message << std::endl;
+        cerr << "Error at lines " << location << ": " << message << endl;
     }
 
   Program* fdmjParser(ifstream &fp, const bool debug) {
@@ -696,7 +703,7 @@ namespace fdmj
   }
 
   Program*  fdmjParser(const string &filename, const bool debug) {
-    std::ifstream fp(filename);
+    ifstream fp(filename);
     if (!fp) {
       cout << "Error: cannot open file " << filename << endl;
       return nullptr;

@@ -15,10 +15,9 @@ Name_Maps* makeNameMaps(Program* node) {
     AST_Name_Map_Visitor name_visitor;
     node->accept(name_visitor);
     Name_Maps* name_maps = name_visitor.getNameMaps();
-    
-    // 调试输出名称映射
+
     name_maps->print();
-    
+
     return name_maps;
 }
 
@@ -180,6 +179,23 @@ vector<Formal*>* Name_Maps::get_method_formal_list(string class_name, string met
         }
     }
     return fl;
+}
+
+bool Name_Maps::add_method_type(string class_name, string method_name, Type* type) {
+    pair<string, string> key(class_name, method_name);
+    if (methodType.find(key) != methodType.end()) {
+        return false; // 已存在
+    }
+    methodType[key] = type;
+    return true;
+}
+
+Type* Name_Maps::get_method_type(string class_name, string method_name) {
+    pair<string, string> key(class_name, method_name);
+    if (methodType.find(key) != methodType.end()) {
+        return methodType[key];
+    }
+    return nullptr;
 }
 
 void Name_Maps::print() {

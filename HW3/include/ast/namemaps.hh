@@ -1,3 +1,15 @@
+#include <iostream>
+
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) do { std::cerr << msg << std::endl; } while (0)
+#define DEBUG_PRINT2(msg, val) do { std::cerr << msg << " " << val << std::endl; } while (0)
+#else
+#define DEBUG_PRINT(msg) do { } while (0)
+#define DEBUG_PRINT2(msg, val) do { } while (0)
+#endif
+
+#define CHECK_NULLPTR(node) if (node == nullptr) return;
+
 #ifndef __AST_NAMEMAPS_HH__
 #define __AST_NAMEMAPS_HH__
 
@@ -21,6 +33,8 @@ private:
     map<tuple<string, string, string>, Formal*> methodFormal; //map classname+methodname+varname to Formal*
     map<pair<string, string>, vector<string>> methodFormalList; //map classname+methodname to formallist of vars
                         //The last is for the return type (pretending to be a Formal)
+    map<pair<string, string>, Type*> methodType; // 新增：存储方法返回类型
+
 public:
     bool is_class(string class_name);
     bool add_class(string class_name); //return false if already exists
@@ -40,6 +54,8 @@ public:
     Formal* get_method_formal(string class_name, string method_name, string var_name);
     bool add_method_formal_list(string class_name, string method_name, vector<string> vl);
     vector<Formal*>* get_method_formal_list(string class_name, string method_name);
+    bool add_method_type(string class_name, string method_name, Type* type);
+    Type* get_method_type(string class_name, string method_name);
 
     void print();
     
