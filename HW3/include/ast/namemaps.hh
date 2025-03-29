@@ -36,7 +36,7 @@ private:
     map<tuple<string, string, string>, Formal*> methodFormal; //map classname+methodname+varname to Formal*
     map<pair<string, string>, vector<string>> methodFormalList; //map classname+methodname to formallist of vars
                         //The last is for the return type (pretending to be a Formal)
-    map<pair<string, string>, Type*> methodType; // 新增：存储方法返回类型
+    map<pair<string, string>, Type*> methodType; // 存储方法返回类型
 
 public:
     bool is_class(string class_name);
@@ -77,10 +77,10 @@ public:
     bool inherit_var(string parent_class, string child_class, string var_name);
     bool check_method_signature(string class1, string method1, string class2, string method2);
 
-    // 新增：检查变量在特定作用域内是否重复定义
+    // 检查变量在特定作用域内是否重复定义
     bool is_var_duplicate_in_scope(string class_name, string method_name, string var_name);
     
-    // 新增：检查变量是否可在当前作用域访问（考虑作用域嵌套）
+    // 检查变量是否可在当前作用域访问（考虑作用域嵌套）
     bool is_var_accessible(string current_class, string current_method, string var_name);
 };
 

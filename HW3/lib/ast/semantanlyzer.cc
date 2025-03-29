@@ -717,7 +717,6 @@ void AST_Semant_Visitor::visit(ArrayExp* node) {
         }
     }
     
-    // 新增：设置 ArrayExp 的语义信息
     // 设定数组表达式将返回其元素类型，这里默认元素类型为 INT，lvalue 为 true
     int arity = 0;
     if (node->arr) {

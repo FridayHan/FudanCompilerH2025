@@ -403,7 +403,7 @@ bool Name_Maps::check_method_signature(string class1, string method1, string cla
     return true;
 }
 
-// 新增：检查变量在特定作用域内是否重复定义
+// 检查变量在特定作用域内是否重复定义
 bool Name_Maps::is_var_duplicate_in_scope(string class_name, string method_name, string var_name) {
     if (method_name.empty()) {
         // 类作用域检查
@@ -427,7 +427,7 @@ bool Name_Maps::is_var_duplicate_in_scope(string class_name, string method_name,
     return false;
 }
 
-// 新增：检查变量是否可在当前作用域访问（考虑作用域嵌套）
+// 检查变量是否可在当前作用域访问（考虑作用域嵌套）
 bool Name_Maps::is_var_accessible(string current_class, string current_method, string var_name) {
     // 1. 首先检查方法的局部变量
     if (!current_method.empty() && is_method_var(current_class, current_method, var_name)) {
