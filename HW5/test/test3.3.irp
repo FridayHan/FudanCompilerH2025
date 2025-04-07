@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Program>
-    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="113" last_label="107">
+    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="112" last_label="107">
         <Blocks>
             <Block entry_label="107">
                 <Sequence>
@@ -239,17 +239,13 @@
                                             <Sequence>
                                                 <Move>
                                                     <Temp type="INT" temp="112"/>
-                                                    <Const value="0"/>
-                                                </Move>
-                                                <Move>
-                                                    <Temp type="INT" temp="113"/>
                                                     <Memory>
                                                         <Temp type="PTR" temp="102"/>
                                                     </Memory>
                                                 </Move>
                                                 <CJump relop="&gt;=" true="105" false="106">
+                                                    <Const value="0"/>
                                                     <Temp type="INT" temp="112"/>
-                                                    <Temp type="INT" temp="113"/>
                                                 </CJump>
                                                 <Label label="105"/>
                                                 <ExpressionStatement>
@@ -261,7 +257,7 @@
                                                 </ExpressionStatement>
                                                 <Label label="106"/>
                                             </Sequence>
-                                            <Temp type="INT" temp="112"/>
+                                            <Const value="0"/>
                                         </ESeq>
                                         <Const value="1"/>
                                     </BinOp>

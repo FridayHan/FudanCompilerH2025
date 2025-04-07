@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Program>
-    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="106" last_label="107">
+    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="105" last_label="107">
         <Blocks>
             <Block entry_label="107">
                 <Sequence>
@@ -84,17 +84,13 @@
                                                         <Sequence>
                                                             <Move>
                                                                 <Temp type="INT" temp="105"/>
-                                                                <Temp type="INT" temp="101"/>
-                                                            </Move>
-                                                            <Move>
-                                                                <Temp type="INT" temp="106"/>
                                                                 <Memory>
                                                                     <Temp type="PTR" temp="100"/>
                                                                 </Memory>
                                                             </Move>
                                                             <CJump relop="&gt;=" true="105" false="106">
+                                                                <Temp type="INT" temp="101"/>
                                                                 <Temp type="INT" temp="105"/>
-                                                                <Temp type="INT" temp="106"/>
                                                             </CJump>
                                                             <Label label="105"/>
                                                             <ExpressionStatement>
@@ -106,7 +102,7 @@
                                                             </ExpressionStatement>
                                                             <Label label="106"/>
                                                         </Sequence>
-                                                        <Temp type="INT" temp="105"/>
+                                                        <Temp type="INT" temp="101"/>
                                                     </ESeq>
                                                     <Const value="1"/>
                                                 </BinOp>
