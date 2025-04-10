@@ -1,5 +1,5 @@
 #define DEBUG
-// #undef DEBUG
+#undef DEBUG
 
 #include "ast2tree.hh"
 #include "ASTheader.hh"
