@@ -1,3 +1,18 @@
+#include <iostream>
+
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) do { std::cerr << msg << std::endl; } while (0)
+#define DEBUG_PRINT2(msg, val) do { std::cerr << msg << " " << val << std::endl; } while (0)
+#else
+#define DEBUG_PRINT(msg) do { } while (0)
+#define DEBUG_PRINT2(msg, val) do { } while (0)
+#endif
+
+#define CHECK_NULLPTR(node) if (!node) { \
+    std::cerr << "Error: Null pointer at " << __FILE__ << ":" << __LINE__ << std::endl; \
+    exit(1); \
+}
+
 #ifndef _AST2TREE_HH
 #define _AST2TREE_HH
 
@@ -73,10 +88,24 @@ class ASTToTreeVisitor : public fdmj::AST_Visitor {
 public:
      tree::Tree *visit_tree_result = nullptr;
      //** Here add some "visitor-level members" */
+     AST_Semant_Map* semant_map;
+     Tr_Exp* currentExp;
+     string current_method;
+     map<string, Method_var_table> method_var_table_map; //map of method name to its var table
+     Temp_map* visitor_temp_map;
+     Label* while_test;
+     Label* while_end;
 
      ~ASTToTreeVisitor() { }
 
-     ASTToTreeVisitor() { }
+     ASTToTreeVisitor() {
+          semant_map = nullptr;
+          currentExp = nullptr;
+          current_method = "";
+          visitor_temp_map = new Temp_map();
+          while_test = nullptr;
+          while_end = nullptr;
+     }
 
      tree::Tree* getTree() { return visit_tree_result; } //return the tree from a single visit (program returns a single tree)
      /*
