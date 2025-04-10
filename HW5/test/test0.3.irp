@@ -14,7 +14,7 @@
                         </ExtCall>
                     </Move>
                     <Move>
-                        <Memory>
+                        <Memory type="INT">
                             <Temp type="PTR" temp="100"/>
                         </Memory>
                         <Const value="4"/>
@@ -33,7 +33,7 @@
                             <Sequence>
                                 <Move>
                                     <Temp type="INT" temp="104"/>
-                                    <Memory>
+                                    <Memory type="INT">
                                         <Temp type="PTR" temp="100"/>
                                     </Memory>
                                 </Move>
@@ -52,7 +52,7 @@
                                     </ExtCall>
                                 </Move>
                                 <Move>
-                                    <Memory>
+                                    <Memory type="PTR">
                                         <Temp type="PTR" temp="105"/>
                                     </Memory>
                                     <Temp type="INT" temp="104"/>
@@ -78,7 +78,7 @@
                                 </CJump>
                                 <Label label="101"/>
                                 <Move>
-                                    <Memory>
+                                    <Memory type="PTR">
                                         <BinOp op="+" type="PTR">
                                             <Temp type="PTR" temp="105"/>
                                             <Temp type="INT" temp="106"/>
@@ -86,7 +86,7 @@
                                     </Memory>
                                     <BinOp op="-" type="INT">
                                         <Const value="0"/>
-                                        <Memory>
+                                        <Memory type="INT">
                                             <BinOp op="+" type="PTR">
                                                 <Temp type="PTR" temp="100"/>
                                                 <Temp type="INT" temp="106"/>
@@ -116,7 +116,7 @@
                         </ExtCall>
                     </ExpressionStatement>
                     <Return>
-                        <Memory>
+                        <Memory type="INT">
                             <BinOp op="+" type="PTR">
                                 <Temp type="PTR" temp="100"/>
                                 <BinOp op="*" type="INT">
@@ -125,7 +125,7 @@
                                             <Sequence>
                                                 <Move>
                                                     <Temp type="INT" temp="108"/>
-                                                    <Memory>
+                                                    <Memory type="INT">
                                                         <Temp type="PTR" temp="100"/>
                                                     </Memory>
                                                 </Move>
