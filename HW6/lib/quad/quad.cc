@@ -178,7 +178,8 @@ void QuadFuncDecl::print(string &use_str, int indent, bool to_print_def_use) {
             if (!first) {
                 use_str += ", ";
             }
-            use_str += print_temp(param);
+            use_str += "t";
+            use_str += to_string(param->num);
             first = false;
         }
         use_str += ")";

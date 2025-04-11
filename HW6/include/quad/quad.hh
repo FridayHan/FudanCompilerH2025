@@ -137,8 +137,8 @@ class QuadFuncDecl : public Quad {
   public:
     vector<QuadBlock*> *quadblocklist;
     string funcname;
-    vector<TempExp*> *params;
-    QuadFuncDecl(Tree *node, string funcname, vector<TempExp*> *params, vector<QuadBlock*> *quadblocklist)
+    vector<Temp*> *params;
+    QuadFuncDecl(Tree *node, string funcname, vector<Temp*> *params, vector<QuadBlock*> *quadblocklist)
         : Quad(QuadKind::FUNCDECL, node), params(params), quadblocklist(quadblocklist), funcname(funcname) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;

@@ -102,7 +102,7 @@ Function _^main^_^main():
     LOAD t138:PTR <- Mem(t167:PTR); def: 138 use: 167 
     MOVE_CALL t100:PTR <- m[t138:PTR] (t103:PTR); def: 100 use: 138 103 
     RETURN Const:0; def: use: 
-Function D^m(t100:PTR):
+Function D^m(t100):
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 
