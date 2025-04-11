@@ -1,0 +1,8 @@
+Function _^main^_^main():
+  Block: Entry Label: L100
+    Exit labels: 
+    LABEL L100; def: use: 
+    EXTCALL t104:PTR <- malloc(Const:4); def: 104 use: 
+    MOVE t100:PTR <- t104:PTR; def: 100 use: 104 
+    STORE Const:0 -> Mem(t100:PTR); def: use: 100 
+    RETURN Const:0; def: use: 

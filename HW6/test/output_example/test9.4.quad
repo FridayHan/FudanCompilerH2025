@@ -1,0 +1,38 @@
+Function _^main^_^main():
+  Block: Entry Label: L100
+    Exit labels: 
+    LABEL L100; def: use: 
+    EXTCALL t108:PTR <- malloc(Const:16); def: 108 use: 
+    MOVE t100:PTR <- t108:PTR; def: 100 use: 108 
+    MOVE_BINOP t109:PTR <- (+, t100:PTR, Const:12); def: 109 use: 100 
+    STORE Name:c2^m2 -> Mem(t109:PTR); def: use: 109 
+    MOVE_BINOP t110:PTR <- (+, t100:PTR, Const:8); def: 110 use: 100 
+    STORE Name:c1^m1 -> Mem(t110:PTR); def: use: 110 
+    MOVE_BINOP t111:PTR <- (+, t100:PTR, Const:4); def: 111 use: 100 
+    STORE Const:100 -> Mem(t111:PTR); def: use: 111 
+    MOVE_BINOP t112:PTR <- (+, t100:PTR, Const:12); def: 112 use: 100 
+    LOAD t106:PTR <- Mem(t112:PTR); def: 106 use: 112 
+    CALL t113:INT <- m2[t106:PTR] (t100:PTR, Const:10); def: 113 use: 106 100 
+    MOVE t107:INT <- t113:INT; def: 107 use: 113 
+    RETURN t107:INT; def: use: 107 
+Function c1^m1(t100:PTR, t101:PTR):
+  Block: Entry Label: L100
+    Exit labels: 
+    LABEL L100; def: use: 
+    MOVE_BINOP t104:PTR <- (+, t100:PTR, Const:0); def: 104 use: 100 
+    STORE t101:INT -> Mem(t104:PTR); def: use: 101 104 
+    RETURN t100:PTR; def: use: 100 
+Function c2^m2(t100:INT, t101:INT):
+  Block: Entry Label: L100
+    Exit labels: 
+    LABEL L100; def: use: 
+    MOVE_BINOP t107:PTR <- (+, t100:PTR, Const:8); def: 107 use: 100 
+    LOAD t105:PTR <- Mem(t107:PTR); def: 105 use: 107 
+    CALL t108:PTR <- m1[t105:PTR] (t100:PTR, t101:INT); def: 108 use: 105 100 101 
+    MOVE t106:PTR <- t108:PTR; def: 106 use: 108 
+    MOVE_BINOP t109:PTR <- (+, t106:PTR, Const:0); def: 109 use: 106 
+    LOAD t110:INT <- Mem(t109:PTR); def: 110 use: 109 
+    MOVE_BINOP t111:PTR <- (+, t100:PTR, Const:4); def: 111 use: 100 
+    LOAD t112:INT <- Mem(t111:PTR); def: 112 use: 111 
+    MOVE_BINOP t113:INT <- (+, t110:INT, t112:INT); def: 113 use: 110 112 
+    RETURN t113:INT; def: use: 113 

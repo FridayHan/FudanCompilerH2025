@@ -1,0 +1,43 @@
+Function _^main^_^main():
+  Block: Entry Label: L105
+    Exit labels: 
+    LABEL L105; def: use: 
+    EXTCALL t118:PTR <- malloc(Const:4); def: 118 use: 
+    MOVE t100:PTR <- t118:PTR; def: 100 use: 118 
+    STORE Const:0 -> Mem(t100:PTR); def: use: 100 
+    EXTCALL t119:PTR <- malloc(Const:24); def: 119 use: 
+    MOVE t101:PTR <- t119:PTR; def: 101 use: 119 
+    STORE Const:5 -> Mem(t101:PTR); def: use: 101 
+    EXTCALL t120:PTR <- malloc(Const:24); def: 120 use: 
+    MOVE t102:PTR <- t120:PTR; def: 102 use: 120 
+    STORE Const:5 -> Mem(t102:PTR); def: use: 102 
+    LOAD t107:INT <- Mem(t101:PTR); def: 107 use: 101 
+    LOAD t108:INT <- Mem(t102:PTR); def: 108 use: 102 
+    CJUMP != t107:INT t108:INT? L100 : L101; def: use: 107 108 
+    LABEL L100; def: use: 
+    EXTCALL t121:INT <- exit(Const:-1); def: 121 use: 
+    MOVE t115:INT <- t121:INT; def: 115 use: 121 
+    LABEL L101; def: use: 
+    MOVE_BINOP t122:INT <- (+, t107:INT, Const:1); def: 122 use: 107 
+    MOVE_BINOP t116:INT <- (*, t122:INT, Const:4); def: 116 use: 122 
+    EXTCALL t123:PTR <- malloc(t116:INT); def: 123 use: 116 
+    MOVE t109:PTR <- t123:PTR; def: 109 use: 123 
+    STORE t107:INT -> Mem(t109:PTR); def: use: 109 107 
+    MOVE t110:INT <- Const:4; def: 110 use: 
+    MOVE_BINOP t124:INT <- (+, t107:INT, Const:1); def: 124 use: 107 
+    MOVE_BINOP t111:INT <- (*, t124:INT, Const:4); def: 111 use: 124 
+    LABEL L102; def: use: 
+    CJUMP < t110:INT t111:INT? L103 : L104; def: use: 110 111 
+    LABEL L103; def: use: 
+    MOVE_BINOP t125:PTR <- (+, t109:PTR, t110:INT); def: 125 use: 109 110 
+    MOVE_BINOP t126:PTR <- (+, t101:PTR, t110:INT); def: 126 use: 101 110 
+    LOAD t127:INT <- Mem(t126:PTR); def: 127 use: 126 
+    MOVE_BINOP t128:PTR <- (+, t102:PTR, t110:INT); def: 128 use: 102 110 
+    LOAD t129:INT <- Mem(t128:PTR); def: 129 use: 128 
+    MOVE_BINOP t130:INT <- (+, t127:INT, t129:INT); def: 130 use: 127 129 
+    STORE t130:INT -> Mem(t125:PTR); def: use: 125 130 
+    MOVE_BINOP t110:INT <- (+, t110:INT, Const:4); def: 110 use: 110 
+    JUMP L102; def: use: 
+    LABEL L104; def: use: 
+    MOVE t100:PTR <- t109:PTR; def: 100 use: 109 
+    RETURN Const:0; def: use: 
