@@ -8,6 +8,5 @@ Function _^main^_^main():
     LABEL L102; def: use: 
     MOVE t103:INT <- Const:1; def: 103 use: 
     LABEL L103; def: use: 
-    EXTCALL t105:INT <- putch(t103:INT); def: 105 use: 103 
-    MOVE t104:INT <- t105:INT; def: 104 use: 105 
+    EXTCALL putch(t103:INT); def: use: 103 
     RETURN t101:INT; def: use: 101 

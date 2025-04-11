@@ -31,7 +31,7 @@ Program* canon(Program* prog) {
 //linearize all the nested SEQs in a stmList into one seq
 StmList* linearize(StmList* sl) {
 #ifdef DEBUG
-    cout << "Linearizing" << endl;
+    cout << "Linearizing: in size=" << sl->size() << endl;
 #endif
     if (sl == nullptr || sl->size() == 0) {
         return new StmList();
@@ -49,8 +49,7 @@ StmList* linearize(StmList* sl) {
                 continue;
             else 
                 sl_result->push_back(stm);
-        }
-        if (stm->getTreeKind() == Kind::SEQ) {
+        } else if (stm->getTreeKind() == Kind::SEQ) {
             StmList *seq2 = linearize(static_cast<Seq*>(stm)->sl);
             if (seq2 != nullptr) {
                 sl_result->insert(sl_result->end(), seq2->begin(), seq2->end());
@@ -95,12 +94,13 @@ StmListExpListPair* reorder(Temp_map *map, StmListExpPairList* pairList) {
                 stmlist->insert(stmlist->begin(), stmlist2->begin(), stmlist2->end());
         } else { //need to swap the exp with the last statement
             Temp *t = map->newtemp();
-            Stm *stm = new Move(new TempExp(Type::INT, t), exp);
+            Type t_type = exp->type;
+            Stm *stm = new Move(new TempExp(t_type, t), exp);
             stmlist->push_back(stm);
             rotate(stmlist->rbegin(), stmlist->rbegin()+1, stmlist->rend());
             if (stmlist2 != nullptr && stmlist2->size()>0)
                 stmlist->insert(stmlist->begin(), stmlist2->begin(), stmlist2->end());
-            explist->push_back(new TempExp(Type::INT, t));
+            explist->push_back(new TempExp(t_type, t));
             rotate(explist->rbegin(), explist->rbegin()+1, explist->rend());
         }
     }
@@ -171,6 +171,7 @@ void CanonVisitor::visit(Block* node) {
     }
     if (sl->size() == 0 ) sl = nullptr;
     else sl = linearize(sl);
+
     b_result = new Block(node->entry_label, node->exit_labels, sl);
 }
 
@@ -318,6 +319,12 @@ StmListExpPair* canon_move_right(Exp* src, CanonVisitor &visitor) {
     //the return has to be [(stm, ..., stm, Move(newtemp, call)), newtemp]
     //now rewrite it into [(stm, ..., stm), call]
     StmList *call_list = linearize(visitor.visit_result->first);
+    if (call_list == nullptr || call_list->size() == 0) {
+        //then it's already in the form of [nullptr, call]
+        cout << "no need to do anything, second is =" << kindToString(visitor.visit_result->second->getTreeKind()) << endl;
+        return visitor.visit_result;
+    }
+    //other wise the last one is a move
     Stm* end_call = call_list->back();
     if (end_call->getTreeKind() != Kind::MOVE) {
         cerr << "Error: Call source conversion failed!" << endl;
@@ -462,14 +469,27 @@ void CanonVisitor::visit(ExpStm* node) {
         sl_result = nullptr;
         return;
     }
+
     exp->accept(*this);
     if (visit_result == nullptr) {
         sl_result = nullptr;
         return;
-    } else if (visit_result->first == nullptr) {
+    } else if (visit_result->first == nullptr || visit_result->first->size() == 0) {
         if (visit_result->second->getTreeKind() != Kind::TEMPEXP) //if it's a temp, don't need to add a new statement
             sl_result = new StmList(1, new ExpStm(visit_result->second));
-    } else {
+    } else if (node->exp->getTreeKind() == Kind::CALL || node->exp->getTreeKind() == Kind::EXTCALL) {
+        //if it's a call, need to strip off the move (for the call)
+        if (sl_result == nullptr || sl_result->size() == 0) {
+            cerr << "Error: No statement list found in a ExpStm when it's a expstm(call)!" << endl;
+            sl_result = nullptr;
+            return;
+        } else {
+            Move *mc = static_cast<Move*>(sl_result->at(sl_result->size()-1));
+            sl_result->pop_back();
+            sl_result->push_back(new ExpStm(mc->src));
+        }
+    }
+    else {
         sl_result = visit_result->first;
         if (visit_result->second->getTreeKind() != Kind::TEMPEXP) //if it's a temp, don't need to add a new statement
             sl_result->push_back(new ExpStm(visit_result->second));
@@ -700,6 +720,7 @@ void CanonVisitor::visit(Call* node) {
     Call* c = new Call(call_ret_type, node->id, e, reorder_result->second);
     sl_result->push_back(new Move(new TempExp(call_ret_type, t), c));
     visit_result = new StmListExpPair(sl_result, new TempExp(call_ret_type, t));
+    //visit_result = new StmListExpPair(sl_result, c);
 }
 
 void CanonVisitor::visit(ExtCall* node) {
@@ -739,8 +760,10 @@ void CanonVisitor::visit(ExtCall* node) {
     }
     sl_result = linearize(sl_result);
     Temp *t = visitor_temp_map->newtemp();
+    Type call_ret_type = node->type;
     ExtCall* c = new ExtCall(node->type, node->extfun, reorder_result->second);
-    TempExp *temp = new TempExp(Type::INT, t);
+    TempExp *temp = new TempExp(call_ret_type, t);
     sl_result->push_back(new Move(temp, c));
     visit_result = new StmListExpPair(sl_result, temp);
+    //visit_result = new StmListExpPair(sl_result, c);
 }

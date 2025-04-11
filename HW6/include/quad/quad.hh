@@ -80,7 +80,7 @@ enum class QuadKind {
     MOVE, LOAD, STORE, MOVE_BINOP, 
     CALL, MOVE_CALL, EXTCALL, MOVE_EXTCALL, 
     LABEL, JUMP, CJUMP,
-    PHI, RETURN
+    PHI, RETURN 
 };
 
 enum class QuadTermKind { 
@@ -208,15 +208,14 @@ class QuadMoveBinop : public QuadStm{
     void print(string &output_str, int indent, bool print_def_use) override;
 };
 
-//Call is always a load a call result to a temp
+//Call with return value ignored
 class QuadCall : public QuadStm{
   public:
     string name;
     QuadTerm *obj_term;
     vector<QuadTerm*> *args;
-    TempExp *result_temp;
-    QuadCall(Tree *node, TempExp *result_temp, string name, QuadTerm *obj_term, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
-        : QuadStm(QuadKind::CALL, node, def, use), result_temp(result_temp), name(name), obj_term(obj_term), args(args) {}
+    QuadCall(Tree *node, string name, QuadTerm *obj_term, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
+        : QuadStm(QuadKind::CALL, node, def, use), name(name), obj_term(obj_term), args(args) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;
 };
@@ -231,13 +230,13 @@ class QuadMoveCall : public QuadStm{
     void print(string &output_str, int indent, bool print_def_use) override;
 };
 
+//ExtCall with return value ignored
 class QuadExtCall : public QuadStm{
   public:
     string extfun;
     vector<QuadTerm*> *args;
-    TempExp *result_temp;
-    QuadExtCall(Tree *node, TempExp *result_temp, string extfun, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
-        : QuadStm(QuadKind::EXTCALL, node, def, use), extfun(extfun), result_temp(result_temp), args(args) {}
+    QuadExtCall(Tree *node, string extfun, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
+        : QuadStm(QuadKind::EXTCALL, node, def, use), extfun(extfun), args(args) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;
 };
