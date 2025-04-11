@@ -4,8 +4,9 @@ MAKEFLAGS = --no-print-directory
 BUILD_DIR = $(CURDIR)/build
 TEST_DIR = $(CURDIR)/test
 MAIN_EXE = $(BUILD_DIR)/tools/main/main
+TEST_EXE = $(BUILD_DIR)/tools/test/test
 
-.PHONY: build clean veryclean rebuild handin
+.PHONY: build clean veryclean rebuild test handin
 
 build:
 	@cmake -G Ninja -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release; \
@@ -20,6 +21,15 @@ veryclean: clean
 	@$(RM) $(BUILD_DIR)
 
 rebuild: veryclean build
+
+test: clean
+	@cd $(TEST_DIR); \
+	for file in $$(ls .); do \
+		if [ "$${file##*.}" = "fmj" ]; then \
+			echo "[$${file%%.*}]"; \
+			$(TEST_EXE) "$${file%%.*}"; \
+		fi \
+	done
 
 handin:
 	@if [ ! -f docs/report.pdf ]; then \
