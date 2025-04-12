@@ -1,4 +1,4 @@
-Function _^main^_^main():
+Function _^main^_^main() last_label=119 last_temp=106:
   Block: Entry Label: L119
     Exit labels: 
     LABEL L119; def: use: 

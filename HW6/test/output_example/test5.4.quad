@@ -1,4 +1,4 @@
-Function _^main^_^main():
+Function _^main^_^main() last_label=100 last_temp=106:
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 
@@ -9,7 +9,7 @@ Function _^main^_^main():
     LOAD t103:PTR <- Mem(t106:PTR); def: 103 use: 106 
     CALL m[t103:PTR] (t100:PTR); def: use: 103 100 
     RETURN Const:0; def: use: 
-Function D^m(t100):
+Function D^m(t100) last_label=100 last_temp=101:
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 

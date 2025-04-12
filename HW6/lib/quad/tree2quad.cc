@@ -40,7 +40,7 @@ QuadProgram* tree2quad(Program* prog) {
     Label *l = temp_map->newlabel();
     QuadReturn* quad_ret = new QuadReturn(new tree::Const(0), new QuadTerm(new Const(0)), new set<Temp*>(), new set<Temp*>());
     QuadBlock* quad_block = new QuadBlock(nullptr, new vector<QuadStm*>(1, quad_ret), l, new vector<Label*>());
-    QuadFuncDecl* quad_func_decl = new QuadFuncDecl(nullptr, string("main"), new vector<TempExp*>(), new vector<QuadBlock*>(1, quad_block));
+    QuadFuncDecl* quad_func_decl = new QuadFuncDecl(nullptr, string("main"), new vector<Temp*>(), new vector<QuadBlock*>(1, quad_block), 100, 100);
     return new QuadProgram(prog, new vector<QuadFuncDecl*>(1, quad_func_decl));
 }
 

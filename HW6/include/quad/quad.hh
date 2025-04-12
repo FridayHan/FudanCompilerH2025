@@ -138,8 +138,10 @@ class QuadFuncDecl : public Quad {
     vector<QuadBlock*> *quadblocklist;
     string funcname;
     vector<Temp*> *params;
-    QuadFuncDecl(Tree *node, string funcname, vector<Temp*> *params, vector<QuadBlock*> *quadblocklist)
-        : Quad(QuadKind::FUNCDECL, node), params(params), quadblocklist(quadblocklist), funcname(funcname) {}
+    int last_label_num;
+    int last_temp_num;
+    QuadFuncDecl(Tree *node, string funcname, vector<Temp*> *params, vector<QuadBlock*> *quadblocklist, int lln, int ltn)
+        : Quad(QuadKind::FUNCDECL, node), params(params), quadblocklist(quadblocklist), funcname(funcname), last_label_num(lln), last_temp_num(ltn) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;
 };
@@ -208,14 +210,15 @@ class QuadMoveBinop : public QuadStm{
     void print(string &output_str, int indent, bool print_def_use) override;
 };
 
-//Call with return value ignored
+//Call is always a load a call result to a temp
 class QuadCall : public QuadStm{
   public:
     string name;
     QuadTerm *obj_term;
     vector<QuadTerm*> *args;
-    QuadCall(Tree *node, string name, QuadTerm *obj_term, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
-        : QuadStm(QuadKind::CALL, node, def, use), name(name), obj_term(obj_term), args(args) {}
+    TempExp *result_temp;
+    QuadCall(Tree *node, TempExp *result_temp, string name, QuadTerm *obj_term, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
+        : QuadStm(QuadKind::CALL, node, def, use), result_temp(result_temp), name(name), obj_term(obj_term), args(args) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;
 };
@@ -230,13 +233,13 @@ class QuadMoveCall : public QuadStm{
     void print(string &output_str, int indent, bool print_def_use) override;
 };
 
-//ExtCall with return value ignored
 class QuadExtCall : public QuadStm{
   public:
     string extfun;
     vector<QuadTerm*> *args;
-    QuadExtCall(Tree *node, string extfun, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
-        : QuadStm(QuadKind::EXTCALL, node, def, use), extfun(extfun), args(args) {}
+    TempExp *result_temp;
+    QuadExtCall(Tree *node, TempExp *result_temp, string extfun, vector<QuadTerm*> *args, set<Temp*> *def, set<Temp*> *use) 
+        : QuadStm(QuadKind::EXTCALL, node, def, use), extfun(extfun), result_temp(result_temp), args(args) {}
     void accept(QuadVisitor &v) {v.visit(this);}
     void print(string &output_str, int indent, bool print_def_use) override;
 };

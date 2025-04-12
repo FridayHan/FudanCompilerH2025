@@ -113,6 +113,8 @@ static std::string print_call(QuadCall *call) {
     std::string id = call->name;
     QuadTerm *obj_term = call->obj_term;
     vector<QuadTerm*> *args = call->args;
+    use_str += print_temp(call->result_temp);
+    use_str += " <- ";
     use_str += call->name;
     use_str += "[";
     use_str +=  obj_term->print();
@@ -133,6 +135,8 @@ string print_extcall(QuadExtCall *call) {
 #endif
     string use_str; use_str.reserve(100);
     vector<QuadTerm*> *args = call->args;
+    use_str += print_temp(call->result_temp);
+    use_str += " <- ";
     use_str += call->extfun;
     use_str += "(";
     bool first = true;
@@ -178,12 +182,15 @@ void QuadFuncDecl::print(string &use_str, int indent, bool to_print_def_use) {
             if (!first) {
                 use_str += ", ";
             }
-            use_str += "t";
-            use_str += to_string(param->num);
+            use_str += "t"+to_string(param->num);
             first = false;
         }
         use_str += ")";
     }
+    use_str += " last_label=";
+    use_str += to_string(this->last_label_num);
+    use_str += " last_temp=";
+    use_str += to_string(this->last_temp_num);
     use_str += ":\n";
     for (auto block : *this->quadblocklist) {
         block->print(use_str, indent+2, to_print_def_use);

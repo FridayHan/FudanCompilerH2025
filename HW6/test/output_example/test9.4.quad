@@ -1,4 +1,4 @@
-Function _^main^_^main():
+Function _^main^_^main() last_label=100 last_temp=111:
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 
@@ -13,14 +13,14 @@ Function _^main^_^main():
     LOAD t106:PTR <- Mem(t111:PTR); def: 106 use: 111 
     MOVE_CALL t107:INT <- m2[t106:PTR] (t100:PTR, Const:10); def: 107 use: 106 100 
     RETURN t107:INT; def: use: 107 
-Function c1^m1(t100, t101):
+Function c1^m1(t100, t101) last_label=100 last_temp=104:
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 
     MOVE_BINOP t104:PTR <- (+, t100:PTR, Const:0); def: 104 use: 100 
     STORE t101:INT -> Mem(t104:PTR); def: use: 101 104 
     RETURN t100:PTR; def: use: 100 
-Function c2^m2(t100, t101):
+Function c2^m2(t100, t101) last_label=100 last_temp=112:
   Block: Entry Label: L100
     Exit labels: 
     LABEL L100; def: use: 
