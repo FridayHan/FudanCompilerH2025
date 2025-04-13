@@ -3,7 +3,7 @@
     <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="102" last_label="115">
         <Blocks>
             <Block entry_label="115">
-                <Statements>
+                <Sequence>
                     <Label label="115"/>
                     <Move>
                         <Temp type="INT" temp="101"/>
@@ -62,7 +62,7 @@
                     <Return>
                         <Temp type="INT" temp="101"/>
                     </Return>
-                </Statements>
+                </Sequence>
             </Block>
         </Blocks>
     </FunctionDeclaration>

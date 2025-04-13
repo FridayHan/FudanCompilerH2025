@@ -3,7 +3,7 @@
     <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="102" last_label="111">
         <Blocks>
             <Block entry_label="111">
-                <Statements>
+                <Sequence>
                     <Label label="111"/>
                     <Move>
                         <Temp type="INT" temp="100"/>
@@ -19,9 +19,9 @@
                                 </Move>
                                 <Sequence>
                                     <CJump relop="&gt;" true="108" false="107">
-                                        <BinOp op="+">
+                                        <BinOp op="+" type="INT">
                                             <Const value="1"/>
-                                            <BinOp op="*">
+                                            <BinOp op="*" type="INT">
                                                 <Const value="2"/>
                                                 <Const value="3"/>
                                             </BinOp>
@@ -56,7 +56,7 @@
                             <Sequence>
                                 <Move>
                                     <Temp type="INT" temp="100"/>
-                                    <BinOp op="+">
+                                    <BinOp op="+" type="INT">
                                         <Temp type="INT" temp="100"/>
                                         <Const value="1"/>
                                     </BinOp>
@@ -65,7 +65,7 @@
                             <Temp type="INT" temp="100"/>
                         </ESeq>
                     </Return>
-                </Statements>
+                </Sequence>
             </Block>
         </Blocks>
     </FunctionDeclaration>
