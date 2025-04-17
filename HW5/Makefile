@@ -37,10 +37,10 @@ patchdemo: $(PATCHDEMO)
 run: $(MAIN)
 	cd $(CURDIR)/test && \
 	for file in $$(ls .); do \
-        if [ "$${file##*.}" = "ast" ]; then \
-            echo "Reading $${file%%.*}"; \
+    if [ "$${file##*.}" = "ast" ]; then \
+      echo "Reading $${file%%.*}"; \
 			$(MAIN) "$${file%%.*}"; \
-        fi \
+    fi \
 	done; \
 	cd .. > /dev/null 2>&1 
 
@@ -51,3 +51,10 @@ run-one: $(MAIN)
 	echo "Reading ${FILE}.2.ast"; \
 	$(MAIN) "${FILE}"; \
 	cd .. > /dev/null 2>&1 
+
+generate:
+	echo "Generating test files..."; \
+	for file in $(CURDIR)/test/*.fmj; do \
+		base_name=$$(basename $$file .fmj); \
+		./tools/gentests-ubuntu-amd64 ./test/$$base_name; \
+	done

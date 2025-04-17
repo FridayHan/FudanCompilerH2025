@@ -91,6 +91,7 @@ public:
      AST_Semant_Map* semant_map;
      Tr_Exp* currentExp;
      string current_method;
+     map<string, tree::Type> local_var_type_map;
      map<string, Method_var_table> method_var_table_map; //map of method name to its var table
      Temp_map* visitor_temp_map;
      Label* while_test;
