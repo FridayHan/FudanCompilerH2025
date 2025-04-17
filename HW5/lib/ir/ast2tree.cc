@@ -97,69 +97,97 @@ void ASTToTreeVisitor::visit(fdmj::VarDecl *node) {
   DEBUG_PRINT("visit: VarDecl node");
   CHECK_NULLPTR(node);
   CHECK_NULLPTR(node->id);
-  // 获取变量名绑定的 temp
-  // node->id->accept(*this);
-  std::string id = node->id->id;
+
+  string id = node->id->id;
   Temp *temp = visitor_temp_map->newtemp();
   method_var_table_map[current_method].var_temp_map->insert({id, temp});
-  // assert(visit_tree_result != nullptr);
-  // Temp *temp = static_cast<tree::TempExp *>(visit_tree_result)->temp;
 
-  if (holds_alternative<std::monostate>(node->init)) {
-    visit_tree_result = nullptr;
-  } else if (holds_alternative<fdmj::IntExp *>(node->init)) {
-    local_var_type_map[node->id->id] = tree::Type::INT;
-    auto int_exp = get<fdmj::IntExp *>(node->init);
-    visit_tree_result = new tree::Move(new tree::TempExp(tree::Type::INT, temp),
-                                       new tree::Const(int_exp->val));
-  } else if (holds_alternative<std::vector<fdmj::IntExp *> *>(node->init)) {
-    local_var_type_map[node->id->id] = tree::Type::PTR;
-    auto vec = get<std::vector<fdmj::IntExp *> *>(node->init);
-    if (vec == nullptr) {
-      // 没有实际初始化，只是个 int[4] 声明
+  tree::Type ir_type;
+  switch (node->type->typeKind) {
+  case fdmj::TypeKind::INT: {
+    ir_type = tree::Type::INT;
+    if (holds_alternative<monostate>(node->init)) {
+      visit_tree_result = nullptr;
+    } else if (holds_alternative<IntExp *>(node->init)) {
+      auto int_exp = get<fdmj::IntExp *>(node->init);
+      visit_tree_result = new tree::Move(new tree::TempExp(ir_type, temp),
+                                         new tree::Const(int_exp->val));
+    } else {
+      DEBUG_PRINT("VarDecl: Unknown init variant type");
       visit_tree_result = nullptr;
       return;
     }
-    int len = vec->size();
-
-    // 申请 (len + 1) * 4 字节空间（+1 是为了存储数组长度）
-    tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
-    Temp *arr_temp = visitor_temp_map->newtemp();
-
-    std::vector<tree::Stm *> *stmts = new std::vector<tree::Stm *>();
-
-    // 1. malloc 分配空间
-    stmts->push_back(new tree::Move(
-        new tree::TempExp(tree::Type::PTR, arr_temp),
-        new tree::Call(tree::Type::PTR, "malloc", nullptr,
-                       new std::vector<tree::Exp *>{alloc_size})));
-
-    // 2. 存储长度：arr[0] = len
-    stmts->push_back(new tree::Move(
-        new tree::Mem(tree::Type::INT,
-                      new tree::TempExp(tree::Type::PTR, arr_temp)),
-        new tree::Const(len)));
-
-    // 3. 存储数组内容 arr[i+1] = vec[i]
-    for (int i = 0; i < len; ++i) {
-      tree::Exp *addr = new tree::Binop(
-          tree::Type::PTR, "+", new tree::TempExp(tree::Type::PTR, arr_temp),
-          new tree::Const((i + 1) * 4));
-      stmts->push_back(new tree::Move(new tree::Mem(tree::Type::INT, addr),
-                                      new tree::Const((*vec)[i]->val)));
-    }
-
-    // 4. 把 arr_temp 赋值给变量 temp
-    stmts->push_back(
-        new tree::Move(new tree::TempExp(tree::Type::PTR, temp),
-                       new tree::TempExp(tree::Type::PTR, arr_temp)));
-
-    // 构造最终语句串
-    visit_tree_result = new tree::Seq(stmts);
-  } else {
-    DEBUG_PRINT("VarDecl: Unknown init variant type");
-    visit_tree_result = nullptr;
+    break;
   }
+  case fdmj::TypeKind::ARRAY: {
+    ir_type = tree::Type::PTR;
+    vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
+    if (holds_alternative<monostate>(node->init)) {
+      int len = 0;
+      tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
+      stmts->push_back(
+          new tree::Move(new tree::TempExp(tree::Type::PTR, temp),
+                         new tree::Call(tree::Type::PTR, "malloc", nullptr,
+                                        new vector<tree::Exp *>{alloc_size})));
+      // arr[0] = 0
+      stmts->push_back(new tree::Move(
+          new tree::Mem(tree::Type::PTR,
+                        new tree::TempExp(tree::Type::PTR, temp)),
+          new tree::Const(0)));
+    } else if (holds_alternative<vector<fdmj::IntExp *> *>(node->init)) {
+      auto vec = get<vector<fdmj::IntExp *> *>(node->init);
+      if (!vec) {
+        int len = 0;
+        tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
+        stmts->push_back(new tree::Move(
+            new tree::TempExp(tree::Type::PTR, temp),
+            new tree::Call(tree::Type::PTR, "malloc", nullptr,
+                           new vector<tree::Exp *>{alloc_size})));
+        // arr[0] = 0
+        stmts->push_back(new tree::Move(
+            new tree::Mem(tree::Type::PTR,
+                          new tree::TempExp(tree::Type::PTR, temp)),
+            new tree::Const(0)));
+        return;
+      } // TODO: should be merged to monostate
+      int len = vec->size();
+
+      // 分配空间 (len + 1) * 4
+      tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
+      stmts->push_back(
+          new tree::Move(new tree::TempExp(tree::Type::PTR, temp),
+                         new tree::Call(tree::Type::PTR, "malloc", nullptr,
+                                        new vector<tree::Exp *>{alloc_size})));
+
+      // 存储长度 arr[0] = len
+      stmts->push_back(new tree::Move(
+          new tree::Mem(tree::Type::PTR,
+                        new tree::TempExp(tree::Type::PTR, temp)),
+          new tree::Const(len)));
+
+      // 存储数组元素 arr[i+1] = vec[i]
+      for (int i = 0; i < len; ++i) {
+        tree::Exp *addr = new tree::Binop(
+            tree::Type::PTR, "+", new tree::TempExp(tree::Type::PTR, temp),
+            new tree::Const((i + 1) * 4));
+        stmts->push_back(new tree::Move(new tree::Mem(tree::Type::INT, addr),
+                                        new tree::Const((*vec)[i]->val)));
+      }
+    } else {
+      DEBUG_PRINT("VarDecl(ARRAY): Unknown init variant type");
+      visit_tree_result = nullptr;
+      return;
+    }
+    visit_tree_result = new tree::Seq(stmts);
+    break;
+  }
+  default: {
+    DEBUG_PRINT("VarDecl: Unknown type");
+    visit_tree_result = nullptr;
+    return;
+  }
+  }
+  local_var_type_map[id] = ir_type;
 }
 
 void ASTToTreeVisitor::visit(fdmj::MethodDecl *node) {
@@ -175,7 +203,7 @@ void ASTToTreeVisitor::visit(fdmj::Formal *node) {
   CHECK_NULLPTR(node->id);
 
   // 1. 获取变量名（由 IdExp 节点提供）
-  std::string id = node->id->id;
+  string id = node->id->id;
 
   // 2. 获取当前方法对应的 var->Temp 映射表
   auto *var_temp_map = method_var_table_map[current_method].var_temp_map;
@@ -418,11 +446,10 @@ void ASTToTreeVisitor::visit(fdmj::PutArray *node) {
   args->push_back(arr);
 
   // 构造 ExtCall 语句
-  visit_tree_result = new tree::ExpStm(
-      new tree::ExtCall(tree::Type::INT, "putarray", args));
+  visit_tree_result =
+      new tree::ExpStm(new tree::ExtCall(tree::Type::INT, "putarray", args));
   CHECK_NULLPTR(visit_tree_result);
 }
-
 
 void ASTToTreeVisitor::visit(fdmj::Starttime *node) {
   DEBUG_PRINT("visit: Starttime node");
@@ -450,7 +477,7 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
   CHECK_NULLPTR(node->left);
   CHECK_NULLPTR(node->right);
 
-  std::string op = node->op->op;
+  string op = node->op->op;
 
   // 逻辑运算 && ||
   if (op == "&&" || op == "||") {
@@ -556,58 +583,63 @@ void ASTToTreeVisitor::visit(fdmj::ArrayExp *node) {
   CHECK_NULLPTR(node->arr);
   CHECK_NULLPTR(node->index);
 
-  // 获取 base（数组首地址）
+  // 1. 先生成 base
   node->arr->accept(*this);
-  CHECK_NULLPTR(currentExp);
   tree::Exp *base = currentExp->unEx(visitor_temp_map)->exp;
-  CHECK_NULLPTR(base);
 
-  // 获取 idx（索引表达式）
+  // 2. 生成原始 idx
   node->index->accept(*this);
-  CHECK_NULLPTR(currentExp);
-  tree::Exp *idx = currentExp->unEx(visitor_temp_map)->exp;
-  CHECK_NULLPTR(idx);
+  tree::Exp *rawIdx = currentExp->unEx(visitor_temp_map)->exp;
 
-  // 准备越界检查的 IR 片段
+  // 3. 构造越界检查的中间变量和标签
   Temp *lenTemp = visitor_temp_map->newtemp();
-  Label *okLabel = visitor_temp_map->newlabel();
+  Label *okLabel  = visitor_temp_map->newlabel();
   Label *errLabel = visitor_temp_map->newlabel();
 
-  auto *stmts = new std::vector<tree::Stm *>();
+  // 4. 把所有检查语句收集到一个 stmts 列表
+  auto *checkStmts = new vector<tree::Stm *>();
+  // lenTemp = Mem(base)
+  checkStmts->push_back(new tree::Move(
+    new tree::TempExp(tree::Type::INT, lenTemp),
+    new tree::Mem(tree::Type::INT, base)
+  ));
+  // if (rawIdx >= lenTemp) goto errLabel else goto okLabel
+  checkStmts->push_back(new tree::Cjump(
+    ">=", rawIdx,
+    new tree::TempExp(tree::Type::INT, lenTemp),
+    errLabel, okLabel
+  ));
+  // err 分支：exit(-1)
+  checkStmts->push_back(new tree::LabelStm(errLabel));
+  // checkStmts->push_back(new tree::ExpStm(
+  //   new tree::Call(tree::Type::INT, "exit", nullptr,
+  //     new vector<tree::Exp *>{ new tree::Const(-1) })
+  // ));
+  // ok 分支
+  checkStmts->push_back(new tree::LabelStm(okLabel));
 
-  // lenTemp = *(base)
-  stmts->push_back(new tree::Move(
-      new tree::TempExp(tree::Type::INT, lenTemp),
-      new tree::Mem(tree::Type::INT, base)));
+  // 5. 用 Eseq 把这些检查语句和 rawIdx 包装起来
+  // 对应标准 IR 中 <ESeq> … <Const value="0"/> 的结构，只不过这里保留原始 idx
+  tree::Exp *idxEseq = new tree::Eseq(
+    tree::Type::INT,
+    new tree::Seq(checkStmts),
+    rawIdx
+  );
 
-  // if (idx >= len) goto errLabel else goto okLabel
-  stmts->push_back(new tree::Cjump(">=", idx,
-                                   new tree::TempExp(tree::Type::INT, lenTemp),
-                                   errLabel, okLabel));
+  // 6. 在 offset 计算中使用这个带副作用的 idxEseq
+  // offset = (idxEseq + 1) * 4
+  tree::Exp *offset = new tree::Binop(
+    tree::Type::INT, "*",
+    new tree::Binop(tree::Type::INT, "+", idxEseq, new tree::Const(1)),
+    new tree::Const(4)
+  );
 
-  stmts->push_back(new tree::LabelStm(errLabel));
-
-  // stmts->push_back(new tree::ExpStm(
-  //     new tree::Call(tree::Type::INT, "exit", nullptr,
-  //                    new std::vector<tree::Exp *>{new tree::Const(-1)})));
-
-  stmts->push_back(new tree::LabelStm(okLabel));
-
-  // 构造 offset: ((idx) + 1) * 4
-  tree::Exp *offset =
-      new tree::Binop(tree::Type::INT, "*",
-          new tree::Binop(tree::Type::INT, "+",
-              new tree::Eseq(tree::Type::INT, new tree::Seq(stmts), idx),  // ✅ idx 是 Eseq 的 exp
-              new tree::Const(1)
-          ),
-          new tree::Const(4)
-      );
-
-  // base + offset → address
-  tree::Exp *address = new tree::Binop(tree::Type::PTR, "+", base, offset);
-  CHECK_NULLPTR(address);
-
-  // [base + offset]
+  // 7. 计算最终地址，并返回 Mem(address)
+  tree::Exp *address = new tree::Binop(
+    tree::Type::PTR, "+",
+    base,
+    offset
+  );
   currentExp = new Tr_ex(new tree::Mem(tree::Type::INT, address));
   visit_tree_result = currentExp->unEx(visitor_temp_map)->exp;
   CHECK_NULLPTR(visit_tree_result);
@@ -665,7 +697,6 @@ void ASTToTreeVisitor::visit(fdmj::This *node) {
   currentExp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
   CHECK_NULLPTR(visit_tree_result);
 }
-
 
 void ASTToTreeVisitor::visit(fdmj::Length *node) {
   DEBUG_PRINT("visit: Length node");
@@ -750,12 +781,12 @@ void ASTToTreeVisitor::visit(fdmj::IdExp *node) {
   DEBUG_PRINT("visit: IdExp node");
   CHECK_NULLPTR(node);
 
-  std::string id = node->id;
+  string id = node->id;
 
   // 获取变量映射表
   auto &var_table = method_var_table_map[current_method];
   if (!var_table.var_temp_map) {
-    var_table.var_temp_map = new std::map<std::string, Temp *>();
+    var_table.var_temp_map = new map<string, Temp *>();
   }
   auto *var_temp_map = var_table.var_temp_map;
 
@@ -764,6 +795,7 @@ void ASTToTreeVisitor::visit(fdmj::IdExp *node) {
     // 新变量，分配临时变量并记录
     temp = visitor_temp_map->newtemp();
     var_temp_map->insert({id, temp});
+    cout << "====ERROR==============ERROR============ERROR============" << endl;
   } else {
     temp = (*var_temp_map)[id];
   }
