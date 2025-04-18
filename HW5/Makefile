@@ -6,7 +6,7 @@ MAKEFLAGS = --no-print-directory
 BUILD_DIR = $(CURDIR)/build
 
 build:
-	@cmake -G Ninja -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release; \
+	@cmake -G Ninja -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug; \
 	cd $(BUILD_DIR) && ninja
 # cd $(BUILD_DIR) && ninja -v
 

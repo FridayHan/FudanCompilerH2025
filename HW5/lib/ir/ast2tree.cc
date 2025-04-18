@@ -123,11 +123,12 @@ void ASTToTreeVisitor::visit(fdmj::VarDecl *node) {
     ir_type = tree::Type::PTR;
     vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
     if (holds_alternative<monostate>(node->init)) {
+      cout << "absdfkljnrebglwerhjbflwesirjdnfblradsbklfjjanbflkrejsndfber;fknbaslaeusfkjnblkwjaer.s,fnb nhlaks.enf sj.nfd ak.fdn,v sdrk.fnb vbshlekj.grnbfaelf" << endl;
       int len = 0;
       tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
       stmts->push_back(
           new tree::Move(new tree::TempExp(tree::Type::PTR, temp),
-                         new tree::Call(tree::Type::PTR, "malloc", nullptr,
+                         new tree::ExtCall(tree::Type::PTR, "malloc",
                                         new vector<tree::Exp *>{alloc_size})));
       // arr[0] = 0
       stmts->push_back(new tree::Move(
@@ -141,7 +142,7 @@ void ASTToTreeVisitor::visit(fdmj::VarDecl *node) {
         tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
         stmts->push_back(new tree::Move(
             new tree::TempExp(tree::Type::PTR, temp),
-            new tree::Call(tree::Type::PTR, "malloc", nullptr,
+            new tree::ExtCall(tree::Type::PTR, "malloc",
                            new vector<tree::Exp *>{alloc_size})));
         // arr[0] = 0
         stmts->push_back(new tree::Move(
@@ -156,7 +157,7 @@ void ASTToTreeVisitor::visit(fdmj::VarDecl *node) {
       tree::Exp *alloc_size = new tree::Const((len + 1) * 4);
       stmts->push_back(
           new tree::Move(new tree::TempExp(tree::Type::PTR, temp),
-                         new tree::Call(tree::Type::PTR, "malloc", nullptr,
+                         new tree::ExtCall(tree::Type::PTR, "malloc",
                                         new vector<tree::Exp *>{alloc_size})));
 
       // 存储长度 arr[0] = len
