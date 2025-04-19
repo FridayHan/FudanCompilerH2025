@@ -1,5 +1,5 @@
 #define DEBUG
-#undef DEBUG
+// #undef DEBUG
 
 #include <iostream>
 #include <string>
@@ -270,7 +270,6 @@ void Tree2XML::visit(Mem* node) {
     cout << "Visiting Memory" << endl;
 #endif
     XMLElement* element = doc->NewElement("Memory");
-    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     node->mem->accept(*this);
     if (visit_result != nullptr) element->InsertEndChild(visit_result);
     visit_result = element;
@@ -380,4 +379,219 @@ void Tree2XML::visit(ExtCall* node) {
     }
     element->InsertEndChild(argsElement);
     visit_result = element;
+}
+
+#define STRONG_MATCH
+
+void DFS(const XMLNode* node, int depth = 0) {
+    if (!node) return;
+
+    // 打印当前节点信息（缩进表示层级）
+    std::string indent(depth * 2, ' ');  // 缩进空格
+    std::cout << indent << "Node: " << node->Value();
+
+    // 处理元素节点（含属性）
+    if (const XMLElement* elem = node->ToElement()) {
+        // 打印属性
+        for (const XMLAttribute* attr = elem->FirstAttribute(); attr; attr = attr->Next()) {
+            std::cout << " | Attr: " << attr->Name() << "=" << attr->Value();
+        }
+    }
+
+    // 打印文本内容（如果有）
+    if (const XMLText* text = node->ToText()) {
+        std::cout << " | Text: " << text->Value();
+    }
+    std::cout << std::endl;
+
+    // 递归遍历子节点
+    for (const XMLNode* child = node->FirstChild(); child; child = child->NextSibling()) {
+        DFS(child, depth + 1);
+    }
+}
+
+bool Comparison::add_temp_pair(int a, int b) {
+    if (func_map[func_context].temp_a2b.find(a) != func_map[func_context].temp_a2b.end()) {
+        if (func_map[func_context].temp_a2b[a] != b) {
+            cout <<"In Func: "<<func_context<< "Temp " << a << " map to both " << func_map[func_context].temp_a2b[a] << " and " << b << "\n";
+            return false;
+        }
+    } else func_map[func_context].temp_a2b[a] = b;
+    return true;
+}
+
+bool Comparison::add_label_pair(int a, int b) {
+    if (func_map[func_context].label_a2b.find(a) != func_map[func_context].label_a2b.end()) {
+        if (func_map[func_context].label_a2b[a] != b) {
+            cout <<"In Func: "<<func_context<< "Temp " << a << " map to both " << func_map[func_context].label_a2b[a] << " and " << b << "\n";
+            return false;
+        }
+    } else func_map[func_context].label_a2b[a] = b;
+    return true;
+}
+
+bool Comparison::dfs_compare(const XMLNode* node1, const XMLNode* node2) {
+    if (!node1 || !node2) return false;
+
+    //lab4 example can be different
+    if(string(node1->ToElement()->Name())!=string(node2->ToElement()->Name())){
+        cout << "node type not match\n";
+        return false;
+    }
+
+    if(string(node1->ToElement()->Name())=="FunctionDeclaration"){
+        func_context = string(node1->ToElement()->Attribute("name"));
+        func_map[func_context].biggest_temp = 0;
+        func_map[func_context].biggest_label = 0;
+
+        func_map[func_context].last_temp=0;
+        func_map[func_context].last_label=0;
+    }
+#ifdef STRONG_MATCH
+    auto elem1=node1->ToElement();
+    auto elem2=node2->ToElement();
+    auto attr1=elem1->FirstAttribute(),attr2=elem2->FirstAttribute();
+    for(;attr1&&attr2;attr1=attr1->Next(),attr2=attr2->Next()){
+        if(string(attr1->Name())!=string(attr2->Name())){
+            cout << "attribute name not match\n";
+            return false;
+        }
+        set<string> ignore_list={
+            "label",
+            "entry_label",
+            "temp",
+            "last_temp",
+            "last_label",
+            "true",
+            "false",
+        };
+        if(ignore_list.find(attr1->Name()) !=ignore_list.end())continue;
+        auto name=string(attr1->Name());
+        if(string(elem1->Name())=="FunctionDeclaration"&&name.size()>8&&name.substr(0,8)=="arg_temp")continue;
+        if(string(attr1->Value())!=string(attr2->Value())){
+            cout << "attribute value not match: "<<attr1->Name()<<" "<<attr1->Value()<<" "<<attr2->Value()<<"\n";
+            return false;
+        }
+    }
+
+    //lab4 example can be different
+    if (attr1 || attr2) {
+        cout << "node attr not match\n";
+        return false;
+    }
+#endif
+
+    vector<int> label1, temp1;
+    if (const XMLElement* elem = node1->ToElement()) {
+        for (const XMLAttribute* attr = elem->FirstAttribute(); attr; attr = attr->Next()) {
+            string name = string(attr->Name());
+            if (name == "label" || name == "entry_label" || name=="true" || name=="false") {
+                int label_val = stoi(string(attr->Value()));
+                label1.push_back(label_val);
+                func_map[func_context].biggest_label = max(func_map[func_context].biggest_label, label_val);
+            } else if (name == "temp" || (string(elem->Name())=="FunctionDeclaration"&&name.size()>8&&name.substr(0,8)=="arg_temp")) {
+                int temp_val = stoi(string(attr->Value()));
+                temp1.push_back(temp_val);
+                func_map[func_context].biggest_temp = max(func_map[func_context].biggest_temp, temp_val);
+            } else if (name == "last_temp") {
+                func_map[func_context].last_temp = stoi(string(attr->Value()));
+            } else if (name == "last_label") {
+                func_map[func_context].last_label = stoi(string(attr->Value()));
+            }
+        }
+    }
+
+    vector<int> label2, temp2;
+    if (const XMLElement* elem = node2->ToElement()) {
+        for (const XMLAttribute* attr = elem->FirstAttribute(); attr; attr = attr->Next()) {
+            string name = string(attr->Name());
+            if (name == "label" || name == "entry_label" || name=="true" || name=="false") {
+                label2.push_back(stoi(string(attr->Value())));
+            } else if (name == "temp" || (string(elem->Name())=="FunctionDeclaration"&&name.size()>8&&name.substr(0,8)=="arg_temp")) {
+                temp2.push_back(stoi(string(attr->Value())));
+            }
+        }
+    }
+
+    if (label1.size() != label2.size() || temp1.size() != temp2.size()) return false;
+    for (int i = 0; i < label1.size(); i++) {
+        if (!add_label_pair(label1[i], label2[i])) return false;
+    }
+    for (int i = 0; i < temp1.size(); i++) {
+        if (!add_temp_pair(temp1[i], temp2[i])) return false;
+    }
+
+    const XMLNode* child1 = node1->FirstChild();
+    const XMLNode* child2 = node2->FirstChild();
+    for (; child1 && child2; child1 = child1->NextSibling(), child2 = child2->NextSibling()) {
+        if (!dfs_compare(child1, child2)) return false;
+    }
+    if (child1 || child2) {
+        cout << "tree struct not match\n";
+        return false;
+    }
+    if (func_map[func_context].biggest_label > func_map[func_context].last_label) {
+        cout << "label overflow\n";
+        return false;
+    }
+    if (func_map[func_context].biggest_temp > func_map[func_context].last_temp) {
+        cout << "temp overflow\n";
+        return false;
+    }
+    return true;
+}
+
+bool Comparison::dfs_compare(string xml1, string xml2) {
+    XMLDocument doc1, doc2;
+    if (doc1.LoadFile(xml1.c_str()) != XML_SUCCESS) {
+        cerr << "Error: " << xml1 << " not found" << endl;
+        return false;
+    }
+    if (doc2.LoadFile(xml2.c_str()) != XML_SUCCESS) {
+        cerr << "Error: " << xml2 << " not found" << endl;
+        return false;
+    }
+    if (doc1.ErrorID() != XML_SUCCESS) {
+        cerr << "Error: " << xml1 << " is not a valid XML file" << endl;
+        return false;
+    }
+    if (doc2.ErrorID() != XML_SUCCESS) {
+        cerr << "Error: " << xml2 << " is not a valid XML file" << endl;
+        return false;
+    }
+    if (!dfs_compare(doc1.RootElement(), doc2.RootElement())) return false;
+    return true;
+}
+
+void Comparison::print() {
+    for(auto [name,mp]: func_map){
+        cout<<"Func: "<<name<<"\n";
+        for (const auto& pair : mp.temp_a2b) {
+            cout << "pair: " << pair.first << " -> " << pair.second << "\n";
+        }
+        for (const auto& pair : mp.label_a2b) {
+            cout << "label: " << pair.first << " -> " << pair.second << "\n";
+        }
+        cout << "last_temp: " << mp.last_temp << " vs biggest_temp: " << mp.biggest_temp << "\n";
+        cout << "last_label: " << mp.last_label << " vs biggest_label: " << mp.biggest_label << "\n";  
+    }
+}
+
+bool compare(string xml1, string xml2, bool print=false) {
+    XMLDocument doc;
+    if (doc.LoadFile(xml1.c_str()) != XML_SUCCESS) {
+        cerr << "Standard irp not exists\n";
+        return true;
+    }
+
+    Comparison a2b, b2a;
+    if (print) cout << "----------a2b----------\n";
+    bool res1 = a2b.dfs_compare(xml1, xml2);
+    if (print) a2b.print();
+
+    if (print) cout << "----------b2a----------\n";
+    bool res2 = b2a.dfs_compare(xml2, xml1);
+    if (print) b2a.print();
+
+    return res1 && res2;
 }

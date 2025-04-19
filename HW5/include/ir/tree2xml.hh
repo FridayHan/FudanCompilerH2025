@@ -36,4 +36,26 @@ public:
 
 XMLDocument* tree2xml(tree::Program* prog);
 
+struct FuncTempMap{
+    map<int,int> temp_a2b,label_a2b;
+    int last_temp,last_label;
+    int biggest_temp,biggest_label;
+};
+
+class Comparison {
+public:
+    bool dfs_compare(string xml1, string xml2);
+    void print();
+private:
+    // a->b是不是单射
+    bool dfs_compare(const XMLNode* node1, const XMLNode* node2);
+    bool add_temp_pair(int a, int b);
+    bool add_label_pair(int a, int b);
+
+    string func_context;
+    map<string,FuncTempMap> func_map;
+};
+
+bool compare(string xml1, string xml2, bool print);
+
 #endif
