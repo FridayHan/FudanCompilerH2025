@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Program>
-    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="104" last_label="100">
+    <FunctionDeclaration name="_^main^_^main" return_type="INT" last_temp="105" last_label="100">
         <Blocks>
             <Block entry_label="100">
                 <Sequence>
@@ -40,6 +40,24 @@
                         </Memory>
                         <Const value="100"/>
                     </Move>
+                    <ExpressionStatement>
+                        <ExtCall extfun="putch" type="INT">
+                            <Arguments>
+                                <BinOp op="+" type="INT">
+                                    <Const value="1"/>
+                                    <BinOp op="*" type="INT">
+                                        <Const value="3"/>
+                                        <Memory type="INT">
+                                            <BinOp op="+" type="PTR">
+                                                <Temp type="PTR" temp="100"/>
+                                                <Const value="4"/>
+                                            </BinOp>
+                                        </Memory>
+                                    </BinOp>
+                                </BinOp>
+                            </Arguments>
+                        </ExtCall>
+                    </ExpressionStatement>
                     <Return>
                         <Call id="m2" type="INT">
                             <Memory type="PTR">
@@ -50,7 +68,10 @@
                             </Memory>
                             <Arguments>
                                 <Temp type="PTR" temp="100"/>
-                                <Const value="10"/>
+                                <BinOp op="+" type="INT">
+                                    <Const value="10"/>
+                                    <Const value="1"/>
+                                </BinOp>
                             </Arguments>
                         </Call>
                     </Return>
