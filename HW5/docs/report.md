@@ -152,4 +152,3 @@
 
 ![pass2](./img/pass2.png)
 
-![pass3](./img/pass3.png)
