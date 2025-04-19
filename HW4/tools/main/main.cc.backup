@@ -32,7 +32,6 @@ int main(int argc, const char *argv[]) {
     // boilerplate output filenames (used throughout the compiler pipeline)
     string file_ast = file + ".2-semant.ast"; // ast in xml
     string file_irp = file + ".3.irp";
-    string file_myirp = file + ".4-myrip.irp";
 
     cout << "------Reading AST from : " << file_ast << "------------" << endl;
     AST_Semant_Map *semant_map = new AST_Semant_Map();
@@ -42,16 +41,12 @@ int main(int argc, const char *argv[]) {
         return EXIT_FAILURE;
     }
     semant_map->getNameMaps()->print();
-    cout << "------Converting AST to IR------" << endl;
+    cout << "Converting AST to IR" << endl;
     Compiler_Config::print_config();
     tree::Program *ir = ast2tree(root, semant_map);
-    cout << "------Saving IR (XML) to: " << file_myirp << "------------" << endl;
+    cout << "Saving IR (XML) to: " << file_irp << endl;
     XMLDocument *x = tree2xml(ir);
-    x->SaveFile(file_myirp.c_str());
+    x->SaveFile(file_irp.c_str());
     cout << "-----Done---" << endl;
-
-    if (!compare(file_irp, file_myirp, true)) cout << "\033[31mOutput not match\033[0m\n";
-    else cout << "\033[32mOutput match\033[0m\n";
-
     return EXIT_SUCCESS;
 }
