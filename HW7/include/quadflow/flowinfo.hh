@@ -67,24 +67,24 @@ class DataFlowInfo {
     public:
         quad::QuadFuncDecl* func; //blocked quad program
         set<int> allVars; // Set of all variables 
-        map<int, vector<pair<quad::QuadBlock*, quad::QuadStm*>>> *defs; //where the variable is used
-        map<int, vector<pair<quad::QuadBlock*, quad::QuadStm*>>> *uses; //where the variable is used
+        map<int, set<pair<quad::QuadBlock*, quad::QuadStm*>>> *defs; //where the variable is used
+        map<int, set<pair<quad::QuadBlock*, quad::QuadStm*>>> *uses; //where the variable is used
         map<quad::QuadStm*, set<int>> *liveout; //live_in vars of a statement
         map<quad::QuadStm*, set<int>> *livein; //live_in vars of a statment 
 
         DataFlowInfo(quad::QuadFuncDecl *func) : func(func) {
             allVars.clear();
-            defs = new map<int, vector<pair<quad::QuadBlock*, quad::QuadStm*>>>();
-            uses = new map<int, vector<pair<quad::QuadBlock*, quad::QuadStm*>>>();
+            defs = new map<int, set<pair<quad::QuadBlock*, quad::QuadStm*>>>();
+            uses = new map<int, set<pair<quad::QuadBlock*, quad::QuadStm*>>>();
             liveout = new map<quad::QuadStm*, set<int>>();
             livein = new map<quad::QuadStm*, set<int>>();
         }
 
         void findAllVars();
-        void findDefs();
-        void findUses();
-        void findLiveOut();
-        void findLiveIn();
+        void computeLiveness();
+        string printLiveness();
 };
+
+set<DataFlowInfo*>* dataFLowProg(quad::QuadProgram* prog);
 
 #endif
