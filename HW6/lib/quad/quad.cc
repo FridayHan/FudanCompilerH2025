@@ -113,8 +113,6 @@ static std::string print_call(QuadCall *call) {
     std::string id = call->name;
     QuadTerm *obj_term = call->obj_term;
     vector<QuadTerm*> *args = call->args;
-    use_str += print_temp(call->result_temp);
-    use_str += " <- ";
     use_str += call->name;
     use_str += "[";
     use_str +=  obj_term->print();
@@ -135,8 +133,6 @@ string print_extcall(QuadExtCall *call) {
 #endif
     string use_str; use_str.reserve(100);
     vector<QuadTerm*> *args = call->args;
-    use_str += print_temp(call->result_temp);
-    use_str += " <- ";
     use_str += call->extfun;
     use_str += "(";
     bool first = true;
