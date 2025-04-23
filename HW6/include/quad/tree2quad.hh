@@ -38,6 +38,8 @@ public:
   void visit(tree::Const *const) override;
   void visit(tree::Call *call) override;
   void visit(tree::ExtCall *extcall) override;
+
+  void resetVisitResults();
 };
 
 QuadProgram *tree2quad(tree::Program *prog);

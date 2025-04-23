@@ -138,7 +138,7 @@ public:
   vector<QuadFuncDecl *> *quadFuncDeclList;
   QuadProgram(tree::Program *node, vector<QuadFuncDecl *> *quadFuncDeclList)
       : Quad(QuadKind::PROGRAM, node), quadFuncDeclList(quadFuncDeclList) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -154,7 +154,7 @@ public:
       : Quad(QuadKind::FUNCDECL, node), params(params),
         quadblocklist(quadblocklist), funcname(funcname), last_label_num(lln),
         last_temp_num(ltn) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -167,7 +167,7 @@ public:
             vector<tree::Label *> *exit_labels)
       : Quad(QuadKind::BLOCK, node), entry_label(entry_label),
         exit_labels(exit_labels), quadlist(quadlist) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -189,7 +189,7 @@ public:
   QuadMove(Tree *node, TempExp *dst, QuadTerm *src, set<Temp *> *def,
            set<Temp *> *use)
       : QuadStm(QuadKind::MOVE, node, def, use), dst(dst), src(src) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -200,7 +200,7 @@ public:
   QuadLoad(Tree *node, TempExp *dst, QuadTerm *src, set<Temp *> *def,
            set<Temp *> *use)
       : QuadStm(QuadKind::LOAD, node, def, use), dst(dst), src(src) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -211,7 +211,7 @@ public:
   QuadStore(Tree *node, QuadTerm *src, QuadTerm *dst, set<Temp *> *def,
             set<Temp *> *use)
       : QuadStm(QuadKind::STORE, node, def, use), src(src), dst(dst) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -225,7 +225,7 @@ public:
                 QuadTerm *right, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::MOVE_BINOP, node, def, use), dst(dst), left(left),
         binop(binop), right(right) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -240,7 +240,7 @@ public:
            vector<QuadTerm *> *args, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::CALL, node, def, use), result_temp(result_temp),
         name(name), obj_term(obj_term), args(args) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -251,7 +251,7 @@ public:
   QuadMoveCall(Tree *node, TempExp *dst, QuadCall *call, set<Temp *> *def,
                set<Temp *> *use)
       : QuadStm(QuadKind::MOVE_CALL, node, def, use), dst(dst), call(call) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -264,7 +264,7 @@ public:
               vector<QuadTerm *> *args, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::EXTCALL, node, def, use), extfun(extfun),
         result_temp(result_temp), args(args) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -276,7 +276,7 @@ public:
                   set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::MOVE_EXTCALL, node, def, use), dst(dst),
         extcall(extcall) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -285,7 +285,7 @@ public:
   Label *label;
   QuadLabel(Tree *node, Label *label, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::LABEL, node, def, use), label(label) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -294,7 +294,7 @@ public:
   Label *label;
   QuadJump(Tree *node, Label *label, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::JUMP, node, def, use), label(label) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -308,7 +308,7 @@ public:
             Label *f, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::CJUMP, node, def, use), relop(relop), left(left),
         right(right), t(t), f(f) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -319,7 +319,7 @@ public:
   QuadPhi(Tree *node, TempExp *temp, vector<pair<Temp *, Label *>> *args,
           set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::PHI, node, def, use), temp(temp), args(args) {}
-  void accept(QuadVisitor &v) { v.visit(this); };
+  void accept(QuadVisitor &v) override { v.visit(this); };
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
@@ -328,7 +328,7 @@ public:
   QuadTerm *value;
   QuadReturn(Tree *node, QuadTerm *value, set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::RETURN, node, def, use), value(value) {}
-  void accept(QuadVisitor &v) { v.visit(this); }
+  void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
 
