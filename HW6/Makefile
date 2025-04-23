@@ -13,6 +13,7 @@ build:
 clean: 
 	@$(RM) build ; \
 	$(RM) test/*.quad; \
+	$(RM) test/*-canon.irp; \
 
 rebuild: clean build
 
