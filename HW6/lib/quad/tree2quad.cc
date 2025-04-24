@@ -318,24 +318,59 @@ void Tree2Quad::visit(Move *node) {
       return;
     }
 
-    // Handle simple move: temp <- term
-    node->src->accept(*this);
-    QuadTerm *src_term = output_term;
-
-    // Create def/use sets
-    set<Temp *> *def = new set<Temp *>();
-    def->insert(temp_dst->temp);
-
-    set<Temp *> *use = new set<Temp *>();
-    if (src_term->kind == QuadTermKind::TEMP) {
-      use->insert(src_term->get_temp()->temp);
+    // Handle move call: temp <- call
+    if (node->src->getTreeKind() == Kind::CALL) {
+      node->src->accept(*this);
+      vector<QuadStm *> *result = visit_result;
+      QuadCall *call_quad = dynamic_cast<QuadCall *>(result->back());
+      set<Temp *> *def_call = new set<Temp *>();
+      def_call->insert(temp_dst->temp);
+      set<Temp *> *use_call = new set<Temp *>(*call_quad->use);
+      QuadMoveCall *move_call = new QuadMoveCall(node, temp_dst, call_quad, def_call, use_call);
+      result->push_back(move_call);
+      visit_result = result;
+      output_term = new QuadTerm(temp_dst);
+      return;
     }
 
-    // Create and store the Move quad
-    QuadMove *move_quad = new QuadMove(node, temp_dst, src_term, def, use);
-    visit_result = new vector<QuadStm *>(1, move_quad);
-    output_term = new QuadTerm(temp_dst);
-    return;
+    // Handle move extcall: temp <- extcall
+    if (node->src->getTreeKind() == Kind::EXTCALL) {
+      node->src->accept(*this);
+      vector<QuadStm *> *result = visit_result;
+      QuadExtCall *extcall_quad = dynamic_cast<QuadExtCall *>(result->back());
+      set<Temp *> *def_ext = new set<Temp *>();
+      def_ext->insert(temp_dst->temp);
+      set<Temp *> *use_ext = new set<Temp *>(*extcall_quad->use);
+      QuadMoveExtCall *move_ext = new QuadMoveExtCall(node, temp_dst, extcall_quad, def_ext, use_ext);
+      result->push_back(move_ext);
+      visit_result = result;
+      output_term = new QuadTerm(temp_dst);
+      return;
+    }
+
+    // Handle simple move: temp <- term
+    {
+      vector<QuadStm *> *result = new vector<QuadStm *>();
+      // Generate any intermediate quads (e.g., for calls, binops)
+      node->src->accept(*this);
+      QuadTerm *src_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
+      // Create def/use sets
+      set<Temp *> *def = new set<Temp *>();
+      def->insert(temp_dst->temp);
+      set<Temp *> *use = new set<Temp *>();
+      if (src_term && src_term->kind == QuadTermKind::TEMP) {
+        use->insert(src_term->get_temp()->temp);
+      }
+      // Create and store the Move quad
+      QuadMove *move_quad = new QuadMove(node, temp_dst, src_term, def, use);
+      result->push_back(move_quad);
+      visit_result = result;
+      output_term = new QuadTerm(temp_dst);
+      return;
+    }
   }
 
   // Unsupported move pattern
@@ -426,7 +461,6 @@ void Tree2Quad::visit(ExpStm *node) {
 
   // Visit the expression
   node->exp->accept(*this);
-//   visit_result = this->visit_result;
   output_term = nullptr;
 }
 
@@ -494,7 +528,7 @@ void Tree2Quad::visit(Mem *node) {
   node->mem->accept(*this);
 
   // Store the address term for later use in Move or other operations
-//   output_term = this->output_term;
+  output_term = this->output_term;
   visit_result = nullptr;
 }
 
