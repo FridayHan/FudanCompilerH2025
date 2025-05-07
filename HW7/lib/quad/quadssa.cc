@@ -128,7 +128,7 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
         if (tempVersions.find(temp) == tempVersions.end() || tempVersions[temp].empty()) {
             // Assign version 0
             int origNum = temp->num;
-            int newNum = origNum * 100;
+            int newNum = origNum * 100;  // Ensure consistent version number format
             Temp* newTemp = new Temp(newNum);
             tempSsaIds[newTemp] = newNum;
             tempVersions[temp].push_back(newTemp);
@@ -138,7 +138,7 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
             // Assign next version
             int origNum = temp->num;
             int version = tempVersions[temp].size();
-            int newNum = origNum * 100 + version;
+            int newNum = origNum * 100 + version;  // Ensure consistent version number format
             Temp* newTemp = new Temp(newNum);
             tempSsaIds[newTemp] = newNum;
             tempVersions[temp].push_back(newTemp);
@@ -150,40 +150,37 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
     // Collect type information for all variables
     for (auto block : *func->quadblocklist) {
         for (auto stm : *block->quadlist) {
-            if (stm->kind == QuadKind::MOVE && stm->def) {
-                QuadMove* move = static_cast<QuadMove*>(stm);
-                if (move->dst) {
-                    for (auto temp : *stm->def) {
-                        tempTypes[temp] = move->dst->type;
+            if (stm->def) {
+                if (stm->kind == QuadKind::MOVE) {
+                    QuadMove* move = static_cast<QuadMove*>(stm);
+                    if (move->dst) {
+                        for (auto temp : *stm->def) tempTypes[temp] = move->dst->type;
                     }
-                }
-            }
-            else if (stm->kind == QuadKind::LOAD && stm->def) {
-                QuadLoad* load = static_cast<QuadLoad*>(stm);
-                if (load->dst) {
-                    for (auto temp : *stm->def) {
-                        tempTypes[temp] = load->dst->type;
+                } else if (stm->kind == QuadKind::LOAD) {
+                    QuadLoad* load = static_cast<QuadLoad*>(stm);
+                    if (load->dst) {
+                        for (auto temp : *stm->def) tempTypes[temp] = load->dst->type;
                     }
-                }
-            }
-            else if (stm->kind == QuadKind::MOVE_BINOP && stm->def) {
-                QuadMoveBinop* moveBinop = static_cast<QuadMoveBinop*>(stm);
-                if (moveBinop->dst) {
-                    for (auto temp : *stm->def) {
-                        tempTypes[temp] = moveBinop->dst->type;
+                } else if (stm->kind == QuadKind::MOVE_BINOP) {
+                    QuadMoveBinop* moveBinop = static_cast<QuadMoveBinop*>(stm);
+                    if (moveBinop->dst) {
+                        for (auto temp : *stm->def) tempTypes[temp] = moveBinop->dst->type;
                     }
-                }
-            }
-            else if (stm->kind == QuadKind::MOVE_EXTCALL && stm->def) {
-                QuadMoveExtCall* moveExtCall = static_cast<QuadMoveExtCall*>(stm);
-                if (moveExtCall->dst) {
-                    for (auto temp : *stm->def) {
-                        tempTypes[temp] = moveExtCall->dst->type;
+                } else if (stm->kind == QuadKind::MOVE_EXTCALL) {
+                    QuadMoveExtCall* moveExtCall = static_cast<QuadMoveExtCall*>(stm);
+                    if (moveExtCall->dst) {
+                        for (auto temp : *stm->def) tempTypes[temp] = moveExtCall->dst->type;
+                    }
+                } else if (stm->kind == QuadKind::MOVE_CALL) {
+                    QuadMoveCall* moveCall = static_cast<QuadMoveCall*>(stm);
+                    if (moveCall->dst) {
+                        for (auto temp : *stm->def) tempTypes[temp] = moveCall->dst->type;
                     }
                 }
             }
         }
     }
+    
     
     // Recursive function to rename variables in a block and its children
     function<void(int)> renameInBlock = [&](int blockNum) {
@@ -200,27 +197,20 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
             // Handle phi functions separately
             if (stm->kind == QuadKind::PHI) {
                 QuadPhi* phi = static_cast<QuadPhi*>(stm);
-                
-                // Replace LHS with new version
                 Temp* lhsTemp = phi->temp->temp;
                 Temp* newLhsTemp = getNewVersion(lhsTemp);
-                
-                Type type = tempTypes.find(lhsTemp) != tempTypes.end() ? 
-                        tempTypes[lhsTemp] : phi->temp->type;
+                Type type = tempTypes.find(lhsTemp) != tempTypes.end() ? tempTypes[lhsTemp] : phi->temp->type;
                 phi->temp = new TempExp(type, newLhsTemp);
-                
-                // Collect def in order
                 std::vector<Temp*> defVec = {newLhsTemp};
-                set<Temp*>* newDef = new set<Temp*>(defVec.begin(), defVec.end());
-                stm->def = newDef;
-                
-                // Collect use in order
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
                 std::vector<Temp*> useVec;
-                for (auto& arg : *phi->args) useVec.push_back(arg.first);
+                for (auto& arg : *phi->args) {
+                    useVec.push_back(arg.first);
+                }
                 stm->use = new set<Temp*>(useVec.begin(), useVec.end());
-                
                 continue;
             }
+            
             
             // Collect use in order
             if (stm->use) {
@@ -368,23 +358,32 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
             }
             else if (stm->kind == QuadKind::MOVE_CALL) {
                 QuadMoveCall* moveCall = static_cast<QuadMoveCall*>(stm);
-                // Only handle dst, not args
+                // 处理目标(dst)
                 TempExp* dstTempExp = moveCall->dst;
                 Temp* dstTemp = dstTempExp->temp;
                 Temp* newDstTemp = getNewVersion(dstTemp);
-
                 Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ?
-                             tempTypes[dstTemp] : dstTempExp->type;
+                              tempTypes[dstTemp] : dstTempExp->type;
                 moveCall->dst = new TempExp(dstType, newDstTemp);
-
                 tempTypes[newDstTemp] = dstType;
-
                 std::vector<Temp*> defVec = {newDstTemp};
                 stm->def = new set<Temp*>(defVec.begin(), defVec.end());
+                
+                // 参数会通过普通的use集合自动处理
             }
             else if (stm->kind == QuadKind::CALL) {
-                // QuadCall has no func_ptr member, only handle use
-                // No special handling needed
+                QuadCall* call = static_cast<QuadCall*>(stm);
+                for (size_t i = 0; i < call->args->size(); ++i) {
+                    QuadTerm* arg = call->args->at(i);
+                    if (arg->kind == QuadTermKind::TEMP) {
+                        TempExp* tempExp = arg->get_temp();
+                        Temp* temp = tempExp->temp;
+                        if (currentVersion.find(temp) != currentVersion.end()) {
+                            Type type = tempTypes.find(temp) != tempTypes.end() ? tempTypes[temp] : tempExp->type;
+                            (*call->args)[i] = new QuadTerm(new TempExp(type, currentVersion[temp]));
+                        }
+                    }
+                }
             }
             else if (stm->kind == QuadKind::CJUMP) {
                 QuadCJump* cjump = static_cast<QuadCJump*>(stm);

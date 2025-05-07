@@ -4,9 +4,14 @@ TEST_DIR="test"
 REF_DIR="test/output_example"
 has_diff=0
 
-# 新增模式和单文件支持
+# ANSI 颜色代码
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # 无颜色
+
 mode="simple"
 single_file=""
+ok_count=0
 
 while getopts "vF:" opt; do
     case $opt in
@@ -17,15 +22,13 @@ while getopts "vF:" opt; do
             single_file="$OPTARG"
             ;;
         *)
-            echo "用法: $0 [-v] [-F basename]"
+            echo -e "${RED}用法: $0 [-v] [-F basename]${NC}"
             exit 1
             ;;
     esac
 done
 
-# 根据是否指定 single_file 来组装待比较文件列表
 if [[ -n $single_file ]]; then
-    # 确保 single_file 包含 -ssa.quad 后缀
     if [[ ! "$single_file" =~ -ssa.quad$ ]]; then
         single_file="$single_file.4-ssa.quad"
     fi
@@ -36,15 +39,13 @@ else
     show_ok_count=1
 fi
 
-ok_count=0
-
 for file in "${files[@]}"; do
-    [ -e "$file" ] || { echo "文件未找到: $file"; has_diff=1; continue; }
+    [ -e "$file" ] || { echo -e "${RED}文件未找到: $file${NC}"; has_diff=1; continue; }
     base=$(basename "$file")
     ref="$REF_DIR/$base"
 
     if [ ! -f "$ref" ]; then
-        echo "Reference missing: $ref"
+        echo -e "${RED}Reference missing: $ref${NC}"
         has_diff=1
         continue
     fi
@@ -53,19 +54,19 @@ for file in "${files[@]}"; do
     if [[ -n $diff_output ]]; then
         has_diff=1
         if [[ $mode == "verbose" ]]; then
-            echo "==== Diff: $base ===="
+            echo -e "${RED}==== Diff: $base ====${NC}"
             echo "$diff_output"
         else
-            echo "DIFF: $base"
+            echo -e "${RED}DIFF: $base${NC}"
         fi
     else
-        echo "OK: $base"
+        echo -e "${GREEN}OK: $base${NC}"
         ((ok_count++))
     fi
 done
 
 if [[ $show_ok_count -eq 1 ]]; then
-    echo "通过的测试数: $ok_count"
+    echo -e "${GREEN}总共通过 $ok_count 个测试${NC}"
 fi
 
 exit $has_diff
