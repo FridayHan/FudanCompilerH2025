@@ -10,7 +10,7 @@ build:
 	cd $(BUILD_DIR) && ninja
 # cd $(BUILD_DIR) && ninja -v
 
-clean: 
+clean:
 	@$(RM) build ; \
 	$(RM) test/*.4.quad; \
 	$(RM) test/*.4-block.quad; \
