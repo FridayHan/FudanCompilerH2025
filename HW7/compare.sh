@@ -30,9 +30,13 @@ if [[ -n $single_file ]]; then
         single_file="$single_file.4-ssa.quad"
     fi
     files=("$TEST_DIR/$single_file")
+    show_ok_count=0
 else
     files=("$TEST_DIR"/*-ssa.quad)
+    show_ok_count=1
 fi
+
+ok_count=0
 
 for file in "${files[@]}"; do
     [ -e "$file" ] || { echo "文件未找到: $file"; has_diff=1; continue; }
@@ -56,7 +60,12 @@ for file in "${files[@]}"; do
         fi
     else
         echo "OK: $base"
+        ((ok_count++))
     fi
 done
+
+if [[ $show_ok_count -eq 1 ]]; then
+    echo "通过的测试数: $ok_count"
+fi
 
 exit $has_diff

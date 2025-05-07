@@ -28,6 +28,7 @@ static void deleteUnreachableBlocks(QuadFuncDecl* func, ControlFlowInfo* domInfo
     // Use domInfo's elimination functionality which is already implemented
     domInfo->eliminateUnreachableBlocks();
 }
+
 static void placePhi(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
     // Find all variables in the function
     set<Temp*> allVars;
@@ -108,6 +109,7 @@ static void placePhi(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
         }
     }
 }
+
 static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
     // Map from original temp to its latest version
     map<Temp*, Temp*> currentVersion;
@@ -115,31 +117,68 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
     // Map from temp to its list of versions
     map<Temp*, vector<Temp*>> tempVersions;
     
+    // Map to store original type information
+    map<Temp*, Type> tempTypes;
+    
+    // Map to track SSA IDs for def attributes
+    map<Temp*, int> tempSsaIds;
+    
     // Function to get or create a new version of a temp
     auto getNewVersion = [&](Temp* temp) -> Temp* {
-        if (tempVersions.find(temp) == tempVersions.end()) {
-            tempVersions[temp] = vector<Temp*>();
+        if (tempVersions.find(temp) == tempVersions.end() || tempVersions[temp].empty()) {
+            // Assign version 0
+            int origNum = temp->num;
+            int newNum = origNum * 100;
+            Temp* newTemp = new Temp(newNum);
+            tempSsaIds[newTemp] = newNum;
+            tempVersions[temp].push_back(newTemp);
+            currentVersion[temp] = newTemp;
+            return newTemp;
+        } else {
+            // Assign next version
+            int origNum = temp->num;
+            int version = tempVersions[temp].size();
+            int newNum = origNum * 100 + version;
+            Temp* newTemp = new Temp(newNum);
+            tempSsaIds[newTemp] = newNum;
+            tempVersions[temp].push_back(newTemp);
+            currentVersion[temp] = newTemp;
+            return newTemp;
         }
-        
-        // Create a new versioned temp
-        int origNum = temp->num;
-        int version = tempVersions[temp].size();
-        int newNum = VersionedTemp::versionedTempNum(origNum, version);
-        
-        Temp* newTemp = new Temp(newNum);
-        tempVersions[temp].push_back(newTemp);
-        currentVersion[temp] = newTemp;
-        
-        return newTemp;
     };
     
-    // Initialize versions for all temps
+    // Collect type information for all variables
     for (auto block : *func->quadblocklist) {
         for (auto stm : *block->quadlist) {
-            if (stm->def) {
-                for (auto temp : *stm->def) {
-                    if (tempVersions.find(temp) == tempVersions.end()) {
-                        getNewVersion(temp);
+            if (stm->kind == QuadKind::MOVE && stm->def) {
+                QuadMove* move = static_cast<QuadMove*>(stm);
+                if (move->dst) {
+                    for (auto temp : *stm->def) {
+                        tempTypes[temp] = move->dst->type;
+                    }
+                }
+            }
+            else if (stm->kind == QuadKind::LOAD && stm->def) {
+                QuadLoad* load = static_cast<QuadLoad*>(stm);
+                if (load->dst) {
+                    for (auto temp : *stm->def) {
+                        tempTypes[temp] = load->dst->type;
+                    }
+                }
+            }
+            else if (stm->kind == QuadKind::MOVE_BINOP && stm->def) {
+                QuadMoveBinop* moveBinop = static_cast<QuadMoveBinop*>(stm);
+                if (moveBinop->dst) {
+                    for (auto temp : *stm->def) {
+                        tempTypes[temp] = moveBinop->dst->type;
+                    }
+                }
+            }
+            else if (stm->kind == QuadKind::MOVE_EXTCALL && stm->def) {
+                QuadMoveExtCall* moveExtCall = static_cast<QuadMoveExtCall*>(stm);
+                if (moveExtCall->dst) {
+                    for (auto temp : *stm->def) {
+                        tempTypes[temp] = moveExtCall->dst->type;
                     }
                 }
             }
@@ -165,33 +204,47 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 // Replace LHS with new version
                 Temp* lhsTemp = phi->temp->temp;
                 Temp* newLhsTemp = getNewVersion(lhsTemp);
-                phi->temp = new TempExp(Type::INT, newLhsTemp);
                 
-                // Do not replace RHS of phi functions now, will be done later
+                Type type = tempTypes.find(lhsTemp) != tempTypes.end() ? 
+                        tempTypes[lhsTemp] : phi->temp->type;
+                phi->temp = new TempExp(type, newLhsTemp);
+                
+                // Collect def in order
+                std::vector<Temp*> defVec = {newLhsTemp};
+                set<Temp*>* newDef = new set<Temp*>(defVec.begin(), defVec.end());
+                stm->def = newDef;
+                
+                // Collect use in order
+                std::vector<Temp*> useVec;
+                for (auto& arg : *phi->args) useVec.push_back(arg.first);
+                stm->use = new set<Temp*>(useVec.begin(), useVec.end());
+                
                 continue;
             }
             
-            // Replace uses with current versions
+            // Collect use in order
             if (stm->use) {
-                set<Temp*>* newUse = new set<Temp*>();
+                std::vector<Temp*> useVec;
                 for (auto temp : *stm->use) {
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        newUse->insert(currentVersion[temp]);
+                        useVec.push_back(currentVersion[temp]);
                     } else {
-                        newUse->insert(temp);
+                        useVec.push_back(temp);
                     }
                 }
-                stm->use = newUse;
+                stm->use = new set<Temp*>(useVec.begin(), useVec.end());
             }
             
-            // Replace specific terms based on statement type
+            // Handle various statement types
             if (stm->kind == QuadKind::MOVE) {
                 QuadMove* move = static_cast<QuadMove*>(stm);
                 if (move->src->kind == QuadTermKind::TEMP) {
                     TempExp* tempExp = move->src->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        move->src = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        move->src = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 
@@ -199,7 +252,17 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 TempExp* dstTempExp = move->dst;
                 Temp* dstTemp = dstTempExp->temp;
                 Temp* newDstTemp = getNewVersion(dstTemp);
-                move->dst = new TempExp(Type::INT, newDstTemp);
+                
+                Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ? 
+                             tempTypes[dstTemp] : dstTempExp->type;
+                move->dst = new TempExp(dstType, newDstTemp);
+                
+                // Update type mapping
+                tempTypes[newDstTemp] = dstType;
+                
+                // Collect def in order
+                std::vector<Temp*> defVec = {newDstTemp};
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
             }
             else if (stm->kind == QuadKind::LOAD) {
                 QuadLoad* load = static_cast<QuadLoad*>(stm);
@@ -207,7 +270,9 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     TempExp* tempExp = load->src->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        load->src = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        load->src = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 
@@ -215,7 +280,16 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 TempExp* dstTempExp = load->dst;
                 Temp* dstTemp = dstTempExp->temp;
                 Temp* newDstTemp = getNewVersion(dstTemp);
-                load->dst = new TempExp(Type::INT, newDstTemp);
+                
+                Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ? 
+                             tempTypes[dstTemp] : dstTempExp->type;
+                load->dst = new TempExp(dstType, newDstTemp);
+                
+                tempTypes[newDstTemp] = dstType;
+                
+                // Collect def in order
+                std::vector<Temp*> defVec = {newDstTemp};
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
             }
             else if (stm->kind == QuadKind::STORE) {
                 QuadStore* store = static_cast<QuadStore*>(stm);
@@ -223,14 +297,18 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     TempExp* tempExp = store->src->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        store->src = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        store->src = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 if (store->dst->kind == QuadTermKind::TEMP) {
                     TempExp* tempExp = store->dst->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        store->dst = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        store->dst = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
             }
@@ -240,14 +318,18 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     TempExp* tempExp = moveBinop->left->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        moveBinop->left = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        moveBinop->left = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 if (moveBinop->right->kind == QuadTermKind::TEMP) {
                     TempExp* tempExp = moveBinop->right->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        moveBinop->right = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        moveBinop->right = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 
@@ -255,7 +337,16 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 TempExp* dstTempExp = moveBinop->dst;
                 Temp* dstTemp = dstTempExp->temp;
                 Temp* newDstTemp = getNewVersion(dstTemp);
-                moveBinop->dst = new TempExp(Type::INT, newDstTemp);
+                
+                Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ? 
+                             tempTypes[dstTemp] : dstTempExp->type;
+                moveBinop->dst = new TempExp(dstType, newDstTemp);
+                
+                tempTypes[newDstTemp] = dstType;
+                
+                // Collect def in order
+                std::vector<Temp*> defVec = {newDstTemp};
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
             }
             else if (stm->kind == QuadKind::MOVE_EXTCALL) {
                 QuadMoveExtCall* moveExtCall = static_cast<QuadMoveExtCall*>(stm);
@@ -264,7 +355,36 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 TempExp* dstTempExp = moveExtCall->dst;
                 Temp* dstTemp = dstTempExp->temp;
                 Temp* newDstTemp = getNewVersion(dstTemp);
-                moveExtCall->dst = new TempExp(Type::INT, newDstTemp);
+                
+                Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ? 
+                             tempTypes[dstTemp] : dstTempExp->type;
+                moveExtCall->dst = new TempExp(dstType, newDstTemp);
+                
+                tempTypes[newDstTemp] = dstType;
+                
+                // Collect def in order
+                std::vector<Temp*> defVec = {newDstTemp};
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
+            }
+            else if (stm->kind == QuadKind::MOVE_CALL) {
+                QuadMoveCall* moveCall = static_cast<QuadMoveCall*>(stm);
+                // Only handle dst, not args
+                TempExp* dstTempExp = moveCall->dst;
+                Temp* dstTemp = dstTempExp->temp;
+                Temp* newDstTemp = getNewVersion(dstTemp);
+
+                Type dstType = tempTypes.find(dstTemp) != tempTypes.end() ?
+                             tempTypes[dstTemp] : dstTempExp->type;
+                moveCall->dst = new TempExp(dstType, newDstTemp);
+
+                tempTypes[newDstTemp] = dstType;
+
+                std::vector<Temp*> defVec = {newDstTemp};
+                stm->def = new set<Temp*>(defVec.begin(), defVec.end());
+            }
+            else if (stm->kind == QuadKind::CALL) {
+                // QuadCall has no func_ptr member, only handle use
+                // No special handling needed
             }
             else if (stm->kind == QuadKind::CJUMP) {
                 QuadCJump* cjump = static_cast<QuadCJump*>(stm);
@@ -272,14 +392,18 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     TempExp* tempExp = cjump->left->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        cjump->left = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        cjump->left = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
                 if (cjump->right->kind == QuadTermKind::TEMP) {
                     TempExp* tempExp = cjump->right->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        cjump->right = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        cjump->right = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
             }
@@ -289,7 +413,9 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     TempExp* tempExp = ret->value->get_temp();
                     Temp* temp = tempExp->temp;
                     if (currentVersion.find(temp) != currentVersion.end()) {
-                        ret->value = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                        Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                  tempTypes[temp] : tempExp->type;
+                        ret->value = new QuadTerm(new TempExp(type, currentVersion[temp]));
                     }
                 }
             }
@@ -301,7 +427,9 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                         TempExp* tempExp = arg->get_temp();
                         Temp* temp = tempExp->temp;
                         if (currentVersion.find(temp) != currentVersion.end()) {
-                            (*extCall->args)[i] = new QuadTerm(new TempExp(Type::INT, currentVersion[temp]));
+                            Type type = tempTypes.find(temp) != tempTypes.end() ? 
+                                      tempTypes[temp] : tempExp->type;
+                            (*extCall->args)[i] = new QuadTerm(new TempExp(type, currentVersion[temp]));
                         }
                     }
                 }
@@ -339,6 +467,7 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
     // Start renaming from the entry block
     renameInBlock(func->quadblocklist->at(0)->entry_label->num);
 }
+
 static void cleanupUnusedPhi(QuadFuncDecl* func) {
     // Find all variables that are actually used
     set<Temp*> usedTemps;
@@ -421,6 +550,5 @@ QuadProgram *quad2ssa(QuadProgram* program) {
         // Add the SSA version of the function to the new program
         ssaProgram->quadFuncDeclList->push_back(func);
     }
-    return ssaProgram; //uncomment this line
-    //return program; //delete this line
+    return ssaProgram;
 }
