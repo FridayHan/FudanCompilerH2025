@@ -16,6 +16,8 @@
 >
 > **Date**: 2025.05.08
 
+---
+
 #### 1. 删除不可达基本块 (`deleteUnreachableBlocks`)
 
 这一步主要依赖于预先计算好的控制流信息。`deleteUnreachableBlocks` 函数直接调用 `domInfo->eliminateUnreachableBlocks()` 方法。`ControlFlowInfo` 类在计算过程中已经识别了从入口块不可达的基本块，此方法会负责将它们从函数的基本块列表中移除，从而简化后续的处理。
@@ -60,8 +62,6 @@
 1. **初始标记**: 首先，遍历所有非 Phi 四元式。如果一个变量 (`Temp*`) 在这些四元式的 `use` 集合中出现，说明这个变量是被实际使用的，将其添加到 `set<Temp*> usedTemps` 中。
 2. **传播使用信息**: 进入一个循环 (`while (changed)`)，反复遍历所有基本块和四元式。如果遇到一个 Phi 函数，并且该 Phi 函数定义的结果变量 (`phi->temp->temp`) 已经被标记为 `usedTemps`，那么该 Phi 函数的输入变量（即 `phi->args` 中的变量）也应该被认为是“有用的”，因为它们的值流动到了一个被使用的变量。将 `phi->args` 中的变量添加到 `usedTemps` 中，如果 `usedTemps` 发生了变化，就设置 `changed = true`，继续下一轮循环，直到没有新的变量被标记为 used。
 3. **移除无用 Phi**: 最后，再次遍历所有基本块中的四元式。如果一个四元式是 Phi 函数 (`QuadKind::PHI`)，并且其定义的结果变量 (`phi->temp->temp`) 不在最终的 `usedTemps` 集合中，则说明这个 Phi 函数的结果没有被任何地方使用，可以安全地删除它。代码使用 `block->quadlist->erase(it)` 来移除这些无用四元式。
-
-通过以上四个步骤的协同工作，`quad2ssa` 函数完成了将 Quad 中间语言转换为 SSA 形式的过程。这个过程为后续的死代码消除、寄存器分配等优化提供了便利。
 
 
 ---
