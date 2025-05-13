@@ -32,8 +32,8 @@ static void addNode(map<int, set<int>>& graph, int n) {
 static void addMovePair(set<pair<int, int>>& movePairs, int src, int dst) {
     if (src != dst && 
             ( ! InterferenceGraph::isMachineReg(src) || ! InterferenceGraph::isMachineReg(dst))) {
-        movePairs.insert(pair(src, dst)); //add the move pair
-        movePairs.insert(pair(dst, src)); //add the inverse move pair
+        movePairs.insert(make_pair(src, dst)); //add the move pair
+        movePairs.insert(make_pair(dst, src)); //add the inverse move pair
     }
 }
 
@@ -128,7 +128,7 @@ InterferenceGraph* buildIg(QuadFuncDecl* funcdecl) {
     }
     for (auto it: toDelete) {
         movePairs.erase(it); //remove the move pair
-        movePairs.erase(pair(it.second, it.first)); //remove the inverse move pair
+        movePairs.erase(make_pair(it.second, it.first)); //remove the inverse move pair
     }
 #ifdef DEBUG
     cout << "Move pairs after deleting invalid ones: " << endl;
