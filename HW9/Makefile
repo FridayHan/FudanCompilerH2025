@@ -72,16 +72,3 @@ run-one-assem: $(MAIN)
 	echo "Running the final assembly program........." ; \
 	qemu-arm -B 0x1000 ${FILE}; \
 	cd .. > /dev/null 2>&1 
-
-run-one-fmj: $(MAIN)
-	cd $(CURDIR)/test && \
-	echo "Reading ${FILE}.fmj"; \
-	$(GENAST) "${FILE}"; \
-	$(GENIR) "${FILE}"; \
-	$(GENQUAD) "${FILE}"; \
-	$(GENSSA) "${FILE}"; \
-	$(MAIN) "${FILE}"; \
-	llvm-link -opaque-pointers "${FILE}.4-ssa.llvm" ../vendor/libsysy/libsysy32.ll -o "${FILE}.ll"; \
-	echo "Running the final LLVM program........." ; \
-	lli -opaque-pointers "${FILE}.ll" ; \
-	cd .. > /dev/null 2>&1
