@@ -17,7 +17,6 @@ bool isAnEdge(map<int, set<int>>& graph, int src, int dst) {
 }
 
 //return true if any node is removed
-// 从图中移除度数小于k的非机器寄存器节点
 bool Coloring::simplify() {
     bool changed = false;
     
@@ -44,7 +43,6 @@ bool Coloring::simplify() {
 }
 
 //return true if changed anything, false otherwise
-// 合并由move指令连接的节点
 bool Coloring::coalesce() {
     if (movePairs.empty()) return false;
     
@@ -126,7 +124,6 @@ bool Coloring::coalesce() {
 
 //freeze the moves that are not coalesced
 //return true if changed anything, false otherwise
-// 冻结不能合并的move指令
 bool Coloring::freeze() {
     if (movePairs.empty()) return false;
     
@@ -165,7 +162,6 @@ bool Coloring::freeze() {
 
 //This is a soft spill: we just remove the node from the graph and add it to the simplified nodes
 //as if nothing happened. The actual spill happens when select&coloring
-// 软溢出：从图中选择一个度数高的节点移除
 bool Coloring::spill() {
     // 如果图为空，返回false
     if (graph.empty()) return false;
@@ -197,7 +193,6 @@ bool Coloring::spill() {
 
 //now try to select the registers for the nodes
 //finally check the validity of the coloring
-// 为节点选择颜色（寄存器）
 bool Coloring::select() {
     colors.clear(); // 先清除所有现有的颜色分配
     

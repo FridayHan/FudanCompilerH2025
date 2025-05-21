@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <COLORING>
-    <Coloring func="_^main^_^main" k="9">
+    <Coloring func="_^main^_^main" k="5">
         <Colors>
             <Color node="0" color="0"/>
             <Color node="1" color="1"/>
@@ -10,11 +10,9 @@
             <Color node="171" color="0"/>
             <Color node="172" color="0"/>
             <Color node="173" color="0"/>
-            <Color node="10000" color="6"/>
-            <Color node="10001" color="6"/>
-            <Color node="10002" color="6"/>
-            <Color node="10100" color="4"/>
-            <Color node="10200" color="5"/>
+            <Color node="10000" color="4"/>
+            <Color node="10001" color="4"/>
+            <Color node="10002" color="4"/>
             <Color node="13000" color="0"/>
             <Color node="13100" color="2"/>
             <Color node="13200" color="0"/>
@@ -22,16 +20,17 @@
             <Color node="16400" color="0"/>
             <Color node="16500" color="0"/>
         </Colors>
-        <Spills/>
+        <Spills>
+            <Spill node="10100"/>
+            <Spill node="10200"/>
+        </Spills>
     </Coloring>
-    <Coloring func="fib^f" k="9">
+    <Coloring func="fib^f" k="5">
         <Colors>
             <Color node="0" color="0"/>
             <Color node="1" color="1"/>
             <Color node="2" color="2"/>
             <Color node="3" color="3"/>
-            <Color node="100" color="6"/>
-            <Color node="101" color="5"/>
             <Color node="119" color="0"/>
             <Color node="120" color="0"/>
             <Color node="10300" color="0"/>
@@ -49,6 +48,9 @@
             <Color node="11600" color="0"/>
             <Color node="11800" color="0"/>
         </Colors>
-        <Spills/>
+        <Spills>
+            <Spill node="100"/>
+            <Spill node="101"/>
+        </Spills>
     </Coloring>
 </COLORING>

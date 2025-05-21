@@ -22,7 +22,8 @@ clean:
 	$(RM) test/*4-prepared.quad; \
 	$(RM) test/*4-alloced.quad; \
 	$(RM) test/*4-rpi.quad; \
-	$(RM) test/*4-rpi-xml.quad; 
+	$(RM) test/*4-rpi-xml.quad; \
+	$(RM) test/*4-xml.clr;
 
 rebuild: clean build
 
@@ -68,26 +69,6 @@ run-5: $(MAIN)
 		$(MAIN) -k 5 "$$filename"; \
 		rm -f ./$$filename.4-ssa-xml.quad; \
 	done
-
-# run: $(MAIN)
-# 	cd $(CURDIR)/test && \
-# 	for file in $$(ls .); do \
-# 		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
-# 			echo "Reading $${file}"; \
-# 			$(MAIN) "$${file%%.*}"; \
-# 		fi; \
-# 	done; \
-# 	cd .. > /dev/null 2>&1 
-
-# run-5: $(MAIN)
-# 	cd $(CURDIR)/test && \
-# 	for file in $$(ls .); do \
-# 		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
-# 			echo "Reading $${file}"; \
-# 			$(MAIN) -k 5 "$${file%%.*}"; \
-# 		fi; \
-# 	done; \
-# 	cd .. > /dev/null 2>&1 
 
 FILE=test1
 
