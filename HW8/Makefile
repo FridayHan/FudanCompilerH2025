@@ -51,23 +51,43 @@ PATCHDEMO = $(BUILD_DIR)/tools/patchdemo/patchdemo
 
 run: $(MAIN)
 	cd $(CURDIR)/test && \
-	for file in $$(ls .); do \
-		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
-			echo "Reading $${file}"; \
-			$(MAIN) "$${file%%.*}"; \
-		fi; \
-	done; \
-	cd .. > /dev/null 2>&1 
+	for file in input_example/*.4-ssa-xml.quad; do \
+		filename=$$(basename $$file .4-ssa-xml.quad); \
+		cp $$file ./$$filename.4-ssa-xml.quad; \
+		echo "Reading $$filename.4-ssa-xml.quad"; \
+		$(MAIN) "$$filename"; \
+		rm -f ./$$filename.4-ssa-xml.quad; \
+	done
 
 run-5: $(MAIN)
 	cd $(CURDIR)/test && \
-	for file in $$(ls .); do \
-		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
-			echo "Reading $${file}"; \
-			$(MAIN) -k 5 "$${file%%.*}"; \
-		fi; \
-	done; \
-	cd .. > /dev/null 2>&1 
+	for file in input_example/*.4-ssa-xml.quad; do \
+		filename=$$(basename $$file .4-ssa-xml.quad); \
+		cp $$file ./$$filename.4-ssa-xml.quad; \
+		echo "Reading $$filename.4-ssa-xml.quad"; \
+		$(MAIN) -k 5 "$$filename"; \
+		rm -f ./$$filename.4-ssa-xml.quad; \
+	done
+
+# run: $(MAIN)
+# 	cd $(CURDIR)/test && \
+# 	for file in $$(ls .); do \
+# 		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
+# 			echo "Reading $${file}"; \
+# 			$(MAIN) "$${file%%.*}"; \
+# 		fi; \
+# 	done; \
+# 	cd .. > /dev/null 2>&1 
+
+# run-5: $(MAIN)
+# 	cd $(CURDIR)/test && \
+# 	for file in $$(ls .); do \
+# 		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
+# 			echo "Reading $${file}"; \
+# 			$(MAIN) -k 5 "$${file%%.*}"; \
+# 		fi; \
+# 	done; \
+# 	cd .. > /dev/null 2>&1 
 
 FILE=test1
 
