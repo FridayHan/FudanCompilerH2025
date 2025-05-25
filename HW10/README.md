@@ -1,9 +1,11 @@
-This is HW9 code base. The task is for a given a (prepared) quad program with the "color" assignments, to generate RPI assembly code. The input files are under test/input_examples, and sample output files are under test/output_examples. The corresponding FMJ source files (for references only) are unde test/fmj_examples. 
+This is Homework 10, which is to do a simple optimization (over Quad Program in SSA form).
 
-What you need to do is to code the "string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent)" function in lib/rpi/quad2rpi.cc. (1) func is a pointer to quad function, (2) dfi is a DataFlowInfo structure with data liveness information (along other items) for func, (3) color is the assignments of temp to register, as well as spilled temps, (4) indent is the indentation used to output code. The output is a string that gives the code for this function. See output_example files for example.
+The basic idea is from Tiger Book Chapter 19.3 for conditional constant propagation. Basically, each temp is given a Run-Time Value (RtValue in opt.hh) that is either NO_VALUE, ONE_VALUE, or MANY_VALUES (when ONE_VALUE, also includes the specific value). We iterate over the statements to find the fixed point (starting with all temp having NO_VALUE, and all blocks non-executable (except for the entry block)).
 
-Your code basically changes each quad instruction to the corresponding RPI (ARM) instruction with temp replaced with registers. Two additional issues need to be dealt with: (1) Spills. If there are spills, space in the frame stack needs to be allocated for the temp (an offset from fp). When it's used as an operand, r9 or r10 (there are at most two operands) should be used to load the value from the frame stack before the instruction that uses it. When it's used as the target (destination) of an instruction, the value must be stored back to the frame stack after the instruction that uses it. (2) Some quad statements need to be split into two RPi instructions (like jump), and some may be combined to form one instruction (for example, load r0, [r1, #8] may be used for two quad statements (a QuadMoveBinop followed by QuadLoad), however, care must be taken to perform such optimization. 
+The above should be implemented in the function "void calculateBT()" in Opt class. You need to implement the code for this function.
 
-In addition, to simplify the code, we assume all constants are small enough that may be loaded into a register directly (like: mov r0, #100).
+The "void modifyFunc()" is to remove constant temps (replaced with constants), unnecessary statements, and unexecutable blocks. You need to implement the code for this function.
 
-The generated assembly code will be graded with the assembler and emulator to run the code. The external functions are either system calls (like exit and malloc), and functions from libsysy32.s (under vendor/libsysy). The assembler and emulator were discussed in the Lab document under HW1. See also the make file for the use of assembler (including linking the libsysy functions) and emulator.
+The main.cc is the main program you need to use.
+
+There are some input files under test/input_example (with test/fmj_example for your reference), and the corresponding sample output files under test/output_example.
