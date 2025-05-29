@@ -19,10 +19,16 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm);
 void quad2rpi(QuadProgram* quadProgram, ColorMap *cm, string filename);
 
 // Helper function
+// string loadSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
+// string storeSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
+// string getTermStr(QuadTerm *term, Color *color, int temp_reg = -1);
+// string loadSpillIfNeeded(QuadTerm *term, Color *color, int temp_reg, int indent);
+// string convertQuadStm(QuadStm* stmt, Color* color, int indent);
+
 string loadSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
 string storeSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
-string getTermStr(QuadTerm *term, Color *color, int temp_reg);
+string getTermStr(QuadTerm *term, Color *color, int temp_reg = -1);
 string loadSpillIfNeeded(QuadTerm *term, Color *color, int temp_reg, int indent);
-string convertQuadStm(QuadStm* stmt, Color* color, int indent);
+string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>& label_emitted);
 
 #endif // __QUAD2RPI_HH

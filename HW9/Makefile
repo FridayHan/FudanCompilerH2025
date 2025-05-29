@@ -50,9 +50,6 @@ run: $(MAIN)
 	done
 
 run-assem: $(MAIN)
-	@mkdir -p $(CURDIR)/test/tmp
-	@cp $(CURDIR)/test/input_example/*.quad $(CURDIR)/test/tmp/
-	@cp $(CURDIR)/test/input_example/k5/*.clr $(CURDIR)/test/tmp/
 	@cd $(CURDIR)/test/tmp && \
 	for file in $$(ls .); do \
 		if [ "$${file#*.}" = "4-prepared-xml.quad" ]; then \
@@ -60,21 +57,24 @@ run-assem: $(MAIN)
 			arm-linux-gnueabihf-gcc -mcpu=cortex-a72 -Wall -Wextra --static \
 				-o "$${file%%.*}" "$${file%%.*}.s" ../../vendor/libsysy/libsysy32.s -lm; \
 			echo "Running the final assembly program........."; \
-			qemu-arm -B 0x1000 "$${file%%.*}"; \
+			qemu-arm -B 0x1000 "$${file%%.*}" || true; \
 		fi; \
 	done
 
 FILE=test1
 
 run-one: $(MAIN)
-	cd $(CURDIR)/test && \
-	echo "Reading ${FILE}.4-prepared-xml.quad and ${FILE}.4-xml.clr"; \
-	$(MAIN) "${FILE}"; \
-	cd .. > /dev/null 2>&1 
+	@mkdir -p $(CURDIR)/test/tmp
+	@cp $(CURDIR)/test/input_example/$(FILE).4-prepared-xml.quad $(CURDIR)/test/tmp/
+	@cp $(CURDIR)/test/input_example/k5/$(FILE).4-xml.clr $(CURDIR)/test/tmp/
+	@cd $(CURDIR)/test/tmp && \
+	echo "Reading $(FILE).4-prepared-xml.quad and $(FILE).4-xml.clr"; \
+	$(MAIN) "$(FILE)"
 
 run-one-assem: $(MAIN)
-	cd $(CURDIR)/test && \
-    arm-linux-gnueabihf-gcc -mcpu=cortex-a72 -Wall -Wextra --static -o "${FILE}" "${FILE}.s" ../vendor/libsysy/libsysy32.s -lm; \
-	echo "Running the final assembly program........." ; \
-	qemu-arm -B 0x1000 ${FILE}; \
-	cd .. > /dev/null 2>&1 
+	@cd $(CURDIR)/test/tmp && \
+	echo "Compiling assembly for $(FILE)..."; \
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a72 -Wall -Wextra --static \
+		-o "$(FILE)" "$(FILE).s" ../../vendor/libsysy/libsysy32.s -lm; \
+	echo "Running the final assembly program........."; \
+	qemu-arm -B 0x1000 "$(FILE)" || true
