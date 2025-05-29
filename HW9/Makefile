@@ -13,6 +13,7 @@ build:
 clean: 
 	@$(RM) build ; \
 	$(RM) test/*5.* \
+	$(RM) $(CURDIR)/test/tmp/
 
 rebuild: clean build
 
@@ -37,26 +38,31 @@ GENTESTS = $(BUILD_DIR)/tools/generatetests/gentests
 PATCHDEMO = $(BUILD_DIR)/tools/patchdemo/patchdemo
 
 run: $(MAIN)
-	cd $(CURDIR)/test && \
+	@mkdir -p $(CURDIR)/test/tmp
+	@cp $(CURDIR)/test/input_example/*.quad $(CURDIR)/test/tmp/
+	@cp $(CURDIR)/test/input_example/k5/*.clr $(CURDIR)/test/tmp/
+	@cd $(CURDIR)/test/tmp && \
 	for file in $$(ls .); do \
 		if [ "$${file#*.}" = "4-prepared-xml.quad" ]; then \
-			echo "Reading ${FILE}.4-prepared-xml.quad and ${FILE}.4-xml.clr"; \
+			echo "Reading $${file} and $${file%%.*}.4-xml.clr"; \
 			$(MAIN) "$${file%%.*}"; \
 		fi; \
-	done; \
-	cd .. > /dev/null 2>&1 
+	done
 
 run-assem: $(MAIN)
-	cd $(CURDIR)/test && \
+	@mkdir -p $(CURDIR)/test/tmp
+	@cp $(CURDIR)/test/input_example/*.quad $(CURDIR)/test/tmp/
+	@cp $(CURDIR)/test/input_example/k5/*.clr $(CURDIR)/test/tmp/
+	@cd $(CURDIR)/test/tmp && \
 	for file in $$(ls .); do \
 		if [ "$${file#*.}" = "4-prepared-xml.quad" ]; then \
-			echo "Reading ${file}.4-prepared-xml.quad and ${file}.4-xml.clr"; \
-			arm-linux-gnueabihf-gcc -mcpu=cortex-a72 -Wall -Wextra --static -o "$${file%%.*}" "$${file%%.*}.s" ../vendor/libsysy/libsysy32.s -lm; \
-			echo "Running the final assembly program........." ; \
-			qemu-arm -B 0x1000 $${file%%.*}; \
+			echo "Reading $${file} and $${file%%.*}.4-xml.clr"; \
+			arm-linux-gnueabihf-gcc -mcpu=cortex-a72 -Wall -Wextra --static \
+				-o "$${file%%.*}" "$${file%%.*}.s" ../../vendor/libsysy/libsysy32.s -lm; \
+			echo "Running the final assembly program........."; \
+			qemu-arm -B 0x1000 "$${file%%.*}"; \
 		fi; \
-	done; \
-	cd .. > /dev/null 2>&1 
+	done
 
 FILE=test1
 
