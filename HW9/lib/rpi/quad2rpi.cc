@@ -15,14 +15,10 @@ static string current_funcname = "";
 
 //This is to convert the names of the functions to a format that is acceptable by the assembler
 string normalizeName(string name) {
-#ifdef DEBUG
-    cout << "[normalizeName] 开始处理函数名: " << name << endl;
-#endif
+    DEBUG_PRINT2("[normalizeName] 开始处理函数名:", name);
     // Normalize the name by replacing special characters with underscores
     if (name == "_^main^_^main") { //speial case for main
-#ifdef DEBUG
-        cout << "[normalizeName] 检测到main函数，直接返回main" << endl;
-#endif
+        DEBUG_PRINT("[normalizeName] 检测到main函数，直接返回main");
         return "main";
     }
     for (char& c : name) {
@@ -30,47 +26,34 @@ string normalizeName(string name) {
             c = '$';
         }
     }
-#ifdef DEBUG
-    cout << "[normalizeName] 规范化后的函数名: " << name << endl;
-#endif
+    DEBUG_PRINT2("[normalizeName] 规范化后的函数名:", name);
     return name;
 }
 
 bool rpi_isMachineReg(int n) {
-#ifdef DEBUG
-    cout << "[rpi_isMachineReg] 检查寄存器编号: " << n << endl;
-#endif
+    DEBUG_PRINT2("[rpi_isMachineReg] 检查寄存器编号:", n);
     // Check if a node is a machine register
     bool result = (n >= 0 && n <= 15);
-#ifdef DEBUG
-    cout << "[rpi_isMachineReg] 是否为机器寄存器: " << (result ? "是" : "否") << endl;
-#endif
+    string answer = result ? "是" : "否";
+    DEBUG_PRINT2("[rpi_isMachineReg] 是否为机器寄存器:", answer);
     return result;
 }
 
 string term2str(QuadTerm *term, Color *color) {
-#ifdef DEBUG
-    cout << "[term2str] 开始处理项，类型: " << (int)term->kind << endl;
-#endif
+    DEBUG_PRINT2("[term2str] 开始处理项，类型:", (int)term->kind);
     string result;
     if (term->kind == QuadTermKind::TEMP) {
         Temp *t = term->get_temp()->temp;
         result = "r" + to_string(color->color_of(t->num));
-#ifdef DEBUG
-        cout << "[term2str] 临时变量，寄存器分配: " << result << endl;
-#endif
+        DEBUG_PRINT2("[term2str] 临时变量，寄存器分配:", result);
     } else if (term->kind == QuadTermKind::CONST) {
         result = "#" + to_string(term->get_const());
-#ifdef DEBUG
-        cout << "[term2str] 常量值: " << result << endl;
-#endif
+        DEBUG_PRINT2("[term2str] 常量值:", result);
     } else if (term->kind == QuadTermKind::MAME) {
         result = "@" + term->get_name();
-#ifdef DEBUG
-        cout << "[term2str] 内存引用: " << result << endl;
-#endif
+        DEBUG_PRINT2("[term2str] 内存引用:", result);
     } else {
-        cerr << "[term2str] 错误：未知的项类型" << endl;
+        std::cerr << "[term2str] 错误：未知的项类型" << std::endl;
         exit(EXIT_FAILURE);
     }
     return result;
@@ -79,15 +62,11 @@ string term2str(QuadTerm *term, Color *color) {
 //Always use function name to prefix a label
 //Note that you should do the same for Jump and CJump labels
 string convert(QuadLabel* label, Color *c, int indent) {
-#ifdef DEBUG
-    cout << "[convert Label] 开始处理标签: " << label->label->str() << endl;
-    cout << "[convert Label] 当前函数名: " << current_funcname << endl;
-#endif
+    DEBUG_PRINT2("[convert Label] 开始处理标签:", label->label->str());
+    DEBUG_PRINT2("[convert Label] 当前函数名:", current_funcname);
     string result; 
     result = current_funcname + "$" + label->label->str() + ": \n";
-#ifdef DEBUG
-    cout << "[convert Label] 生成的标签: " << result;
-#endif
+    DEBUG_PRINT2("[convert Label] 生成的标签:", result);
     return result;
 }
 
@@ -98,11 +77,15 @@ string convert(QuadLabel* label, Color *c, int indent) {
 /*************************************************** */
 /*************************************************** */
 
+// Helper function declarations
+string loadSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
+string storeSpilledTemp(int temp_num, Color* color, int reg_num, int indent);
+string getTermStr(QuadTerm *term, Color *color, int temp_reg = -1);
+string loadSpillIfNeeded(QuadTerm *term, Color *color, int temp_reg, int indent);
+string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>& label_emitted);
+
 string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) {
-#ifdef DEBUG
-    cout << "\n[convert FuncDecl] 开始处理函数: " << func->funcname << endl;
-    cout << "[convert FuncDecl] 函数包含 " << func->quadblocklist->size() << " 个基本块" << endl;
-#endif
+    DEBUG_PRINT2("[convert Func] 处理函数:", func->funcname);
     string result; 
     current_funcname = func->funcname;
     string indent_str(indent, ' ');
@@ -110,10 +93,6 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
     result += "@ Here's function: " + func->funcname + "\n\n";
     
     string func_label = normalizeName(func->funcname);
-#ifdef DEBUG
-    cout << "[convert FuncDecl] 规范化后的函数标签: " << func_label << endl;
-#endif
-    
     result += ".balign 4\n";
     result += ".global " + func_label + "\n";
     result += ".section .text\n\n";
@@ -123,72 +102,48 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
     result += indent_str + "push {r4-r10, fp, lr}\n";
     result += indent_str + "add fp, sp, #32\n";
     
-    // 收集所有跳转目标
+    // 收集所有跳转目标，确保生成所有需要的标签
     set<string> all_jump_targets;
     for (auto block : *func->quadblocklist) {
         for (auto stmt : *block->quadlist) {
             if (stmt->kind == QuadKind::JUMP) {
                 QuadJump* jump = static_cast<QuadJump*>(stmt);
                 all_jump_targets.insert(jump->label->str());
-#ifdef DEBUG
-                cout << "[convert FuncDecl] 添加JUMP目标: " << jump->label->str() << endl;
-#endif
             } else if (stmt->kind == QuadKind::CJUMP) {
                 QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
                 all_jump_targets.insert(cjump->t->str());
                 all_jump_targets.insert(cjump->f->str());
-#ifdef DEBUG
-                cout << "[convert FuncDecl] 添加CJUMP目标: " << cjump->t->str() << " 和 " << cjump->f->str() << endl;
-#endif
             }
         }
     }
     
+    // 跟踪已生成的标签
     map<string, bool> label_emitted;
     
-    // 处理每个基本块
     for (auto block : *func->quadblocklist) {
         string block_label = block->entry_label->str();
-        
-        // 如果这个基本块是跳转目标，先生成标签
-        if (all_jump_targets.count(block_label) && !label_emitted[block_label]) {
+        DEBUG_PRINT2("[convert Func] 处理基本块:", block_label);
+        // 生成基本块标签
+        if (!label_emitted[block_label]) {
             result += current_funcname + "$" + block_label + ": \n";
             label_emitted[block_label] = true;
-#ifdef DEBUG
-            cout << "[convert FuncDecl] 插入基本块标签: " << block_label << endl;
-#endif
         }
         
-        // 处理基本块中的语句
         for (auto stmt : *block->quadlist) {
-            // 如果是条件跳转，先生成条件跳转指令
+            DEBUG_PRINT2("[convert Func] 处理语句 kind:", (int)stmt->kind);
+            // 在处理每个语句前，检查是否需要生成跳转目标标签
             if (stmt->kind == QuadKind::CJUMP) {
                 QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-                string true_label = cjump->t->str();
-                string false_label = cjump->f->str();
-                
-                // 生成条件跳转指令
+                // 处理CJUMP指令
                 result += convertQuadStm(stmt, color, indent, label_emitted);
                 
-                // 生成 true 分支标签
-                if (!label_emitted[true_label]) {
-                    result += current_funcname + "$" + true_label + ": \n";
-                    label_emitted[true_label] = true;
-#ifdef DEBUG
-                    cout << "[convert FuncDecl] 插入true分支标签: " << true_label << endl;
-#endif
-                }
-                
-                // 生成 false 分支标签
+                // CJUMP后立即生成false分支标签
+                string false_label = cjump->f->str();
                 if (!label_emitted[false_label]) {
                     result += current_funcname + "$" + false_label + ": \n";
                     label_emitted[false_label] = true;
-#ifdef DEBUG
-                    cout << "[convert FuncDecl] 插入false分支标签: " << false_label << endl;
-#endif
                 }
             } else {
-                // 处理其他类型的语句
                 result += convertQuadStm(stmt, color, indent, label_emitted);
             }
         }
@@ -199,208 +154,106 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
         if (!label_emitted[target]) {
             result += current_funcname + "$" + target + ": \n";
             label_emitted[target] = true;
-#ifdef DEBUG
-            cout << "[convert FuncDecl] 插入遗漏的跳转目标标签: " << target << endl;
-#endif
         }
     }
     
-#ifdef DEBUG
-    cout << "[convert FuncDecl] 函数 " << func->funcname << " 处理完成\n" << endl;
-#endif
     return result;
 }
 
 string loadSpilledTemp(int temp_num, Color* color, int reg_num, int indent) {
-#ifdef DEBUG
-    cout << "[loadSpilledTemp] 检查临时变量 " << temp_num << " 是否需要加载到寄存器 " << reg_num << endl;
-#endif
-    if (!color->is_spill(temp_num)) {
-#ifdef DEBUG
-        cout << "[loadSpilledTemp] 临时变量 " << temp_num << " 不需要加载" << endl;
-#endif
-        return "";
-    }
-    
+    if (!color->is_spill(temp_num)) return "";
+    DEBUG_PRINT2("[loadSpilledTemp] 加载溢出变量:", temp_num);
     string indent_str(indent, ' ');
     int offset = color->get_spill_offset(temp_num);
-    string result = indent_str + "ldr r" + to_string(reg_num) + ", [fp, #-" + to_string(offset) + "]\n";
-#ifdef DEBUG
-    cout << "[loadSpilledTemp] 生成加载指令: " << result;
-#endif
-    return result;
+    return indent_str + "ldr r" + to_string(reg_num) + ", [fp, #-" + to_string(offset) + "]\n";
 }
 
 string storeSpilledTemp(int temp_num, Color* color, int reg_num, int indent) {
-#ifdef DEBUG
-    cout << "[storeSpilledTemp] 检查临时变量 " << temp_num << " 是否需要存储到内存" << endl;
-#endif
-    if (!color->is_spill(temp_num)) {
-#ifdef DEBUG
-        cout << "[storeSpilledTemp] 临时变量 " << temp_num << " 不需要存储" << endl;
-#endif
-        return "";
-    }
-    
+    if (!color->is_spill(temp_num)) return "";
+    DEBUG_PRINT2("[storeSpilledTemp] 存储溢出变量:", temp_num);
     string indent_str(indent, ' ');
     int offset = color->get_spill_offset(temp_num);
-    string result = indent_str + "str r" + to_string(reg_num) + ", [fp, #-" + to_string(offset) + "]\n";
-#ifdef DEBUG
-    cout << "[storeSpilledTemp] 生成存储指令: " << result;
-#endif
-    return result;
+    return indent_str + "str r" + to_string(reg_num) + ", [fp, #-" + to_string(offset) + "]\n";
 }
 
 string getTermStr(QuadTerm *term, Color *color, int temp_reg) {
-#ifdef DEBUG
-    cout << "[getTermStr] 开始处理项，类型: " << (int)term->kind << endl;
-#endif
+    DEBUG_PRINT2("[getTermStr] 处理项类型:", (int)term->kind);
     if (term->kind == QuadTermKind::TEMP) {
         Temp *t = term->get_temp()->temp;
         if (color->is_spill(t->num)) {
-            string result = (temp_reg != -1) ? "r" + to_string(temp_reg) : "r9";
-#ifdef DEBUG
-            cout << "[getTermStr] 临时变量溢出，使用寄存器: " << result << endl;
-#endif
-            return result;
+            return (temp_reg != -1) ? "r" + to_string(temp_reg) : "r9";
         } else {
-            string result = "r" + to_string(color->color_of(t->num));
-#ifdef DEBUG
-            cout << "[getTermStr] 临时变量分配寄存器: " << result << endl;
-#endif
-            return result;
+            return "r" + to_string(color->color_of(t->num));
         }
     } else if (term->kind == QuadTermKind::CONST) {
-        string result = "#" + to_string(term->get_const());
-#ifdef DEBUG
-        cout << "[getTermStr] 常量值: " << result << endl;
-#endif
-        return result;
+        return "#" + to_string(term->get_const());
     } else if (term->kind == QuadTermKind::MAME) {
-        string result = "=" + normalizeName(term->get_name());
-#ifdef DEBUG
-        cout << "[getTermStr] 内存引用: " << result << endl;
-#endif
-        return result;
+        return "=" + normalizeName(term->get_name());
     }
     return "";
 }
 
 string loadSpillIfNeeded(QuadTerm *term, Color *color, int temp_reg, int indent) {
-#ifdef DEBUG
-    cout << "[loadSpillIfNeeded] 检查是否需要加载溢出变量" << endl;
-#endif
     if (term->kind == QuadTermKind::TEMP) {
         Temp *t = term->get_temp()->temp;
         if (color->is_spill(t->num)) {
-#ifdef DEBUG
-            cout << "[loadSpillIfNeeded] 需要加载溢出变量 " << t->num << " 到寄存器 " << temp_reg << endl;
-#endif
+            DEBUG_PRINT2("[loadSpillIfNeeded] 需要加载溢出变量:", t->num);
             return loadSpilledTemp(t->num, color, temp_reg, indent);
         }
     }
-#ifdef DEBUG
-    cout << "[loadSpillIfNeeded] 不需要加载溢出变量" << endl;
-#endif
     return "";
 }
 
 string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>& label_emitted) {
-#ifdef DEBUG
-    cout << "\n[convertQuadStm] 开始处理语句，类型: " << (int)stmt->kind << endl;
-#endif
     string result;
     string indent_str(indent, ' ');
-    
+    DEBUG_PRINT2("[convertQuadStm] 处理语句 kind:", (int)stmt->kind);
     switch (stmt->kind) {
         case QuadKind::MOVE: {
+            DEBUG_PRINT("[convertQuadStm] 处理MOVE语句");
             QuadMove* move = static_cast<QuadMove*>(stmt);
             Temp* dst_temp = move->dst->temp;
             
             string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             string src_str = getTermStr(move->src, color);
             
-#ifdef DEBUG
-            cout << "[convertQuadStm] MOVE指令: " << dst_reg << " <- " << src_str << endl;
-#endif
-            
-            if (move->src->kind == QuadTermKind::MAME) {
-                result += indent_str + "ldr r11, " + src_str + "\n";
-                result += indent_str + "mov " + dst_reg + ", r11\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成内存加载指令" << endl;
-#endif
-            } else if (dst_reg != src_str) {
+            if (dst_reg != src_str) {
                 result += indent_str + "mov " + dst_reg + ", " + src_str + "\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成寄存器移动指令" << endl;
-#endif
             }
             break;
         }
         
         case QuadKind::LOAD: {
+            DEBUG_PRINT("[convertQuadStm] 处理LOAD语句");
             QuadLoad* load = static_cast<QuadLoad*>(stmt);
             Temp* dst_temp = load->dst->temp;
             
             string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             string src_str = getTermStr(load->src, color);
             
-#ifdef DEBUG
-            cout << "[convertQuadStm] LOAD指令: " << dst_reg << " <- [" << src_str << "]" << endl;
-#endif
-            
-            if (load->src->kind == QuadTermKind::MAME) {
-                result += indent_str + "ldr r11, " + src_str + "\n";
-                result += indent_str + "ldr " + dst_reg + ", [r11]\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成间接内存加载指令" << endl;
-#endif
-            } else {
-                result += indent_str + "ldr " + dst_reg + ", [" + src_str + "]\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成直接内存加载指令" << endl;
-#endif
-            }
+            result += indent_str + "ldr " + dst_reg + ", [" + src_str + "]\n";
             break;
         }
         
         case QuadKind::STORE: {
+            DEBUG_PRINT("[convertQuadStm] 处理STORE语句");
             QuadStore* store = static_cast<QuadStore*>(stmt);
             
             string src_str = getTermStr(store->src, color);
             string dst_str = getTermStr(store->dst, color);
             
-#ifdef DEBUG
-            cout << "[convertQuadStm] STORE指令: [" << dst_str << "] <- " << src_str << endl;
-#endif
-            
-            if (store->dst->kind == QuadTermKind::MAME) {
-                result += indent_str + "ldr r11, " + dst_str + "\n";
-                result += indent_str + "str " + src_str + ", [r11]\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成间接内存存储指令" << endl;
-#endif
-            } else {
-                result += indent_str + "str " + src_str + ", [" + dst_str + "]\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成直接内存存储指令" << endl;
-#endif
-            }
+            result += indent_str + "str " + src_str + ", [" + dst_str + "]\n";
             break;
         }
         
         case QuadKind::MOVE_BINOP: {
+            DEBUG_PRINT("[convertQuadStm] 处理MOVE_BINOP语句");
             QuadMoveBinop* binop = static_cast<QuadMoveBinop*>(stmt);
             Temp* dst_temp = binop->dst->temp;
             
             string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             string left_str = getTermStr(binop->left, color);
             string right_str = getTermStr(binop->right, color);
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] MOVE_BINOP指令: " << dst_reg << " <- " << left_str << " " << binop->binop << " " << right_str << endl;
-#endif
             
             string arm_op;
             if (binop->binop == "+") arm_op = "add";
@@ -410,30 +263,23 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             else if (binop->binop == "%") {
                 result += indent_str + "sdiv r11, " + left_str + ", " + right_str + "\n";
                 result += indent_str + "mls " + dst_reg + ", r11, " + right_str + ", " + left_str + "\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成取模运算指令" << endl;
-#endif
                 break;
             }
             else arm_op = "add";
             
             result += indent_str + arm_op + " " + dst_reg + ", " + left_str + ", " + right_str + "\n";
-#ifdef DEBUG
-            cout << "[convertQuadStm] 生成二元运算指令: " << arm_op << endl;
-#endif
             break;
         }
         
         case QuadKind::JUMP: {
+            DEBUG_PRINT("[convertQuadStm] 处理JUMP语句");
             QuadJump* jump = static_cast<QuadJump*>(stmt);
             result += indent_str + "b " + current_funcname + "$" + jump->label->str() + "\n";
-#ifdef DEBUG
-            cout << "[convertQuadStm] 生成无条件跳转指令，目标: " << jump->label->str() << endl;
-#endif
             break;
         }
         
         case QuadKind::CJUMP: {
+            DEBUG_PRINT("[convertQuadStm] 处理CJUMP语句");
             QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
             
             string left_str, right_str;
@@ -452,58 +298,48 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 right_str = getTermStr(cjump->right, color, -1);
             }
             
-            // 生成比较指令
             result += indent_str + "cmp " + left_str + ", " + right_str + "\n";
             
-            // 根据条件生成跳转指令
-            string arm_cond;
-            if (cjump->relop == "<") arm_cond = "lt";
-            else if (cjump->relop == "<=") arm_cond = "le";
-            else if (cjump->relop == "=") arm_cond = "eq";
-            else if (cjump->relop == ">=") arm_cond = "ge";
-            else if (cjump->relop == ">") arm_cond = "gt";
-            else if (cjump->relop == "!=") arm_cond = "ne";
-            else arm_cond = "eq";
+            string condition;
+            if (cjump->relop == "==") condition = "eq";
+            else if (cjump->relop == "!=") condition = "ne";
+            else if (cjump->relop == "<") condition = "lt";
+            else if (cjump->relop == "<=") condition = "le";
+            else if (cjump->relop == ">") condition = "gt";
+            else if (cjump->relop == ">=") condition = "ge";
+            else condition = "eq";
             
-            result += indent_str + "b" + arm_cond + " " + current_funcname + "$" + cjump->t->str() + "\n";
-#ifdef DEBUG
-            cout << "[convertQuadStm] 生成条件跳转指令，条件: " << arm_cond << ", true分支: " << cjump->t->str() << endl;
-#endif
+            result += indent_str + "b" + condition + " " + current_funcname + "$" + cjump->t->str() + "\n";
+            
+            // 为false分支生成标签
+            string false_label = cjump->f->str();
+            if (!label_emitted[false_label]) {
+                result += current_funcname + "$" + false_label + ": \n";
+                label_emitted[false_label] = true;
+            }
             break;
         }
         
         case QuadKind::RETURN: {
+            DEBUG_PRINT("[convertQuadStm] 处理RETURN语句");
             QuadReturn* ret = static_cast<QuadReturn*>(stmt);
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] 处理RETURN语句" << endl;
-#endif
             
             if (ret->value) {
                 string src_str = getTermStr(ret->value, color);
                 if (src_str != "r0") {
                     result += indent_str + "mov r0, " + src_str + "\n";
-#ifdef DEBUG
-                    cout << "[convertQuadStm] 生成返回值移动指令" << endl;
-#endif
                 }
             }
             
+            // 简化epilogue - 移除栈操作
             result += indent_str + "sub sp, fp, #32\n";
             result += indent_str + "pop {r4-r10, fp, pc}\n";
-#ifdef DEBUG
-            cout << "[convertQuadStm] 生成函数返回指令" << endl;
-#endif
             break;
         }
         
         case QuadKind::EXTCALL: {
+            DEBUG_PRINT("[convertQuadStm] 处理EXTCALL语句");
             QuadExtCall* extcall = static_cast<QuadExtCall*>(stmt);
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] 处理外部调用: " << extcall->extfun << endl;
-            cout << "[convertQuadStm] 参数数量: " << extcall->args->size() << endl;
-#endif
             
             for (int i = 0; i < extcall->args->size() && i < 4; i++) {
                 QuadTerm* arg = extcall->args->at(i);
@@ -512,28 +348,18 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 
                 if (arg_str != dst_reg) {
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-#ifdef DEBUG
-                    cout << "[convertQuadStm] 生成参数传递指令: " << dst_reg << " <- " << arg_str << endl;
-#endif
                 }
             }
             
             result += indent_str + "bl " + extcall->extfun + "\n";
-#ifdef DEBUG
-            cout << "[convertQuadStm] 生成外部调用指令" << endl;
-#endif
             break;
         }
         
         case QuadKind::MOVE_EXTCALL: {
+            DEBUG_PRINT("[convertQuadStm] 处理MOVE_EXTCALL语句");
             QuadMoveExtCall* moveExtcall = static_cast<QuadMoveExtCall*>(stmt);
             QuadExtCall* extcall = moveExtcall->extcall;
             Temp* dst_temp = moveExtcall->dst->temp;
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] 处理带返回值的内部调用: " << extcall->extfun << endl;
-            cout << "[convertQuadStm] 参数数量: " << extcall->args->size() << endl;
-#endif
             
             for (int i = 0; i < extcall->args->size() && i < 4; i++) {
                 QuadTerm* arg = extcall->args->at(i);
@@ -542,9 +368,6 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 
                 if (arg_str != dst_reg) {
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-#ifdef DEBUG
-                    cout << "[convertQuadStm] 生成参数传递指令: " << dst_reg << " <- " << arg_str << endl;
-#endif
                 }
             }
             
@@ -553,20 +376,13 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             if (dst_reg != "r0") {
                 result += indent_str + "mov " + dst_reg + ", r0\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成返回值移动指令: " << dst_reg << " <- r0" << endl;
-#endif
             }
             break;
         }
         
         case QuadKind::CALL: {
+            DEBUG_PRINT("[convertQuadStm] 处理CALL语句");
             QuadCall* call = static_cast<QuadCall*>(stmt);
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] 处理内部调用: " << call->name << endl;
-            cout << "[convertQuadStm] 参数数量: " << call->args->size() << endl;
-#endif
             
             for (int i = 0; i < call->args->size() && i < 4; i++) {
                 QuadTerm* arg = call->args->at(i);
@@ -575,9 +391,6 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 
                 if (arg_str != dst_reg) {
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-#ifdef DEBUG
-                    cout << "[convertQuadStm] 生成参数传递指令: " << dst_reg << " <- " << arg_str << endl;
-#endif
                 }
             }
             
@@ -586,27 +399,17 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 result += indent_str + "add r1, " + obj_str + ", #" + call->name + "\n";
                 result += indent_str + "ldr r1, [r1]\n";
                 result += indent_str + "blx r1\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成对象方法调用指令" << endl;
-#endif
             } else {
                 result += indent_str + "bl " + normalizeName(call->name) + "\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成普通函数调用指令" << endl;
-#endif
             }
             break;
         }
         
         case QuadKind::MOVE_CALL: {
+            DEBUG_PRINT("[convertQuadStm] 处理MOVE_CALL语句");
             QuadMoveCall* moveCall = static_cast<QuadMoveCall*>(stmt);
             QuadCall* call = moveCall->call;
             Temp* dst_temp = moveCall->dst->temp;
-            
-#ifdef DEBUG
-            cout << "[convertQuadStm] 处理带返回值的内部调用: " << call->name << endl;
-            cout << "[convertQuadStm] 参数数量: " << call->args->size() << endl;
-#endif
             
             for (int i = 0; i < call->args->size() && i < 4; i++) {
                 QuadTerm* arg = call->args->at(i);
@@ -615,9 +418,6 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 
                 if (arg_str != dst_reg) {
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-#ifdef DEBUG
-                    cout << "[convertQuadStm] 生成参数传递指令: " << dst_reg << " <- " << arg_str << endl;
-#endif
                 }
             }
             
@@ -626,50 +426,32 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
                 result += indent_str + "add r1, " + obj_str + ", #" + call->name + "\n";
                 result += indent_str + "ldr r1, [r1]\n";
                 result += indent_str + "blx r1\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成对象方法调用指令" << endl;
-#endif
             } else {
                 result += indent_str + "bl " + normalizeName(call->name) + "\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成普通函数调用指令" << endl;
-#endif
             }
             
             string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             if (dst_reg != "r0") {
                 result += indent_str + "mov " + dst_reg + ", r0\n";
-#ifdef DEBUG
-                cout << "[convertQuadStm] 生成返回值移动指令: " << dst_reg << " <- r0" << endl;
-#endif
             }
             break;
         }
         
         default:
-#ifdef DEBUG
-            cout << "[convertQuadStm] 未知的语句类型" << endl;
-#endif
+            DEBUG_PRINT("[convertQuadStm] 未知语句类型");
             break;
     }
-    
     return result;
 }
 
 string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
-#ifdef DEBUG
-    cout << "\n[quad2rpi] 开始转换四元式程序到RPI格式" << endl;
-    cout << "[quad2rpi] 函数数量: " << quadProgram->quadFuncDeclList->size() << endl;
-#endif
-    
+    DEBUG_PRINT("[quad2rpi] 开始转换四元式程序到RPI格式");
+    DEBUG_PRINT2("[quad2rpi] 函数数量:", quadProgram->quadFuncDeclList->size());
     string result; result.reserve(10000);
     result = ".section .note.GNU-stack\n\n@ Here is the RPI code\n\n";
     
     for (QuadFuncDecl* func : *quadProgram->quadFuncDeclList) {
-#ifdef DEBUG
-        cout << "\n[quad2rpi] 处理函数: " << func->funcname << endl;
-#endif
-        
+        DEBUG_PRINT2("[quad2rpi] 处理函数:", func->funcname);
         DataFlowInfo *dfi = new DataFlowInfo(func);
         dfi->computeLiveness();
         trace(func);
@@ -689,27 +471,19 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
     result += ".global starttime\n";
     result += ".global stoptime\n";
     
-#ifdef DEBUG
-    cout << "[quad2rpi] RPI代码生成完成" << endl;
-#endif
-    
+    DEBUG_PRINT("[quad2rpi] RPI代码生成完成");
     return result;
 }
 
 void quad2rpi(QuadProgram* quadProgram, ColorMap *cm, string filename) {
-#ifdef DEBUG
-    cout << "\n[quad2rpi] 开始将RPI代码写入文件: " << filename << endl;
-#endif
-    
+    DEBUG_PRINT2("[quad2rpi] 开始将RPI代码写入文件:", filename);
     ofstream outfile(filename);
     if (outfile.is_open()) {
         outfile << quad2rpi(quadProgram, cm);
         outfile.flush();
         outfile.close();
-#ifdef DEBUG
-        cout << "[quad2rpi] 文件写入成功" << endl;
-#endif
+        DEBUG_PRINT("[quad2rpi] 文件写入成功");
     } else {
-        cerr << "[quad2rpi] 错误：无法打开文件 " << filename << endl;
+        std::cerr << "[quad2rpi] 错误：无法打开文件 " << filename << std::endl;
     }
 }
