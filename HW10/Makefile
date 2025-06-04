@@ -22,7 +22,8 @@ clean:
 	$(RM) test/*4-prepared.quad; \
 	$(RM) test/*4-alloced.quad; \
 	$(RM) test/*4-rpi.quad; \
-	$(RM) test/*4-rpi-xml.quad; 
+	$(RM) test/*4-rpi-xml.quad; \
+	$(RM) test/tmp/; \
 
 rebuild: clean build
 
@@ -44,19 +45,21 @@ handin:
 MAIN = $(BUILD_DIR)/tools/main/main
 
 run: $(MAIN)
-	cd $(CURDIR)/test && \
+	@mkdir -p $(CURDIR)/test/tmp
+	@cp $(CURDIR)/test/input_example/*.quad $(CURDIR)/test/tmp/
+	@cd $(CURDIR)/test/tmp && \
 	for file in $$(ls .); do \
 		if [ "$${file#*.}" = "4-ssa-xml.quad" ]; then \
 			echo "Reading $${file}"; \
 			$(MAIN) "$${file%%.*}"; \
 		fi; \
 	done; \
-	cd .. > /dev/null 2>&1 
 
 FILE=test1
 
 run-one: $(MAIN)
-	cd $(CURDIR)/test && \
+	@mkdir -p $(CURDIR)/test/tmp
+	@cp $(CURDIR)/test/input_example/$(FILE).4-ssa-xml.quad $(CURDIR)/test/tmp/
+	@cd $(CURDIR)/test/tmp && \
 	echo "Reading ${FILE}.4-ssa-xml.quad"; \
 	$(MAIN) "${FILE}"; \
-	cd .. > /dev/null 2>&1 
