@@ -179,6 +179,18 @@ void Opt::modifyFunc() {
     vector<QuadBlock*> *newBlocks = new vector<QuadBlock*>();
     std::set<int> removed_bases;
 
+    std::set<int> phi_uses;
+    for (auto &block : *func->quadblocklist) {
+        for (auto &stm : *block->quadlist) {
+            if (stm->kind == QuadKind::PHI) {
+                auto p = static_cast<QuadPhi*>(stm);
+                for (auto &arg : *p->args) {
+                    phi_uses.insert(arg.first->num);
+                }
+            }
+        }
+    }
+
     for (auto &block : *func->quadblocklist) {
         if (!block_executable[block->entry_label->num]) continue;
 
@@ -199,9 +211,11 @@ void Opt::modifyFunc() {
                     if (getRtValue(m->dst->temp->num).getType() == ValueType::ONE_VALUE) {
                         int base = (m->dst->temp->num >= 10000) ? m->dst->temp->num / 100 : m->dst->temp->num;
                         removed_bases.insert(base);
-                    } else {
-                        newList->push_back(stm);
+                        if (phi_uses.find(m->dst->temp->num) == phi_uses.end()) {
+                            break; // remove this move
+                        }
                     }
+                    newList->push_back(stm);
                     break;
                 }
                 case QuadKind::STORE: {
@@ -219,6 +233,53 @@ void Opt::modifyFunc() {
                     replaceTerm(s->src);
                     replaceTerm(s->dst);
                     newList->push_back(stm);
+                    break;
+                }
+                case QuadKind::MOVE_CALL: {
+                    auto m = static_cast<QuadMoveCall*>(stm);
+                    auto repTerm = [&](QuadTerm *&t){
+                        if (t && t->kind == QuadTermKind::TEMP) {
+                            Temp* tmp = t->get_temp()->temp;
+                            RtValue v = getRtValue(tmp->num);
+                            if (v.getType() == ValueType::ONE_VALUE) {
+                                if (m->use) m->use->erase(tmp);
+                                t = new QuadTerm(v.getIntValue());
+                            }
+                        }
+                    };
+                    if (m->call) {
+                        repTerm(m->call->obj_term);
+                        for (auto &arg : *m->call->args) repTerm(arg);
+                    }
+                    if (getRtValue(m->dst->temp->num).getType() == ValueType::ONE_VALUE) {
+                        int base = (m->dst->temp->num >= 10000) ? m->dst->temp->num / 100 : m->dst->temp->num;
+                        removed_bases.insert(base);
+                    } else {
+                        newList->push_back(stm);
+                    }
+                    break;
+                }
+                case QuadKind::MOVE_EXTCALL: {
+                    auto m = static_cast<QuadMoveExtCall*>(stm);
+                    auto repTerm = [&](QuadTerm *&t){
+                        if (t && t->kind == QuadTermKind::TEMP) {
+                            Temp* tmp = t->get_temp()->temp;
+                            RtValue v = getRtValue(tmp->num);
+                            if (v.getType() == ValueType::ONE_VALUE) {
+                                if (m->use) m->use->erase(tmp);
+                                t = new QuadTerm(v.getIntValue());
+                            }
+                        }
+                    };
+                    if (m->extcall) {
+                        for (auto &arg : *m->extcall->args) repTerm(arg);
+                    }
+                    if (getRtValue(m->dst->temp->num).getType() == ValueType::ONE_VALUE) {
+                        int base = (m->dst->temp->num >= 10000) ? m->dst->temp->num / 100 : m->dst->temp->num;
+                        removed_bases.insert(base);
+                    } else {
+                        newList->push_back(stm);
+                    }
                     break;
                 }
                 case QuadKind::MOVE_BINOP: {
@@ -251,6 +312,21 @@ void Opt::modifyFunc() {
                     } else {
                         newList->push_back(stm);
                     }
+                    break;
+                }
+                case QuadKind::EXTCALL: {
+                    auto e = static_cast<QuadExtCall*>(stm);
+                    for (auto &arg : *e->args) {
+                        if (arg && arg->kind == QuadTermKind::TEMP) {
+                            Temp* tmp = arg->get_temp()->temp;
+                            RtValue v = getRtValue(tmp->num);
+                            if (v.getType() == ValueType::ONE_VALUE) {
+                                if (e->use) e->use->erase(tmp);
+                                arg = new QuadTerm(v.getIntValue());
+                            }
+                        }
+                    }
+                    newList->push_back(stm);
                     break;
                 }
                 case QuadKind::CJUMP: {

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <string>
 #include <set>
+#include <algorithm>
 #include "quad.hh"
 #include "temp.hh"
 
@@ -104,15 +105,27 @@ string print_def_use(set<Temp*> *def, set<Temp*> *use) {
     std::string output_str; output_str.reserve(200);
     output_str += "def: ";
     if (def != nullptr) {
+        std::vector<int> nums;
+        nums.reserve(def->size());
         for (auto t : *def) {
-            output_str += to_string(t->name());
+            nums.push_back(t->name());
+        }
+        std::sort(nums.rbegin(), nums.rend());
+        for (int n : nums) {
+            output_str += to_string(n);
             output_str += " ";
         }
     }
     output_str += "use: ";
     if (use != nullptr) {
+        std::vector<int> nums;
+        nums.reserve(use->size());
         for (auto t : *use) {
-            output_str += to_string(t->name());
+            nums.push_back(t->name());
+        }
+        std::sort(nums.rbegin(), nums.rend());
+        for (int n : nums) {
+            output_str += to_string(n);
             output_str += " ";
         }
     }
