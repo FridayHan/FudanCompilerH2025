@@ -5,6 +5,11 @@ import argparse
 TMP_DIR = "test/tmp"
 REF_DIR = "test/output_example"
 
+COLOR_RESET = "\033[0m"
+COLOR_GREEN = "\033[32m"
+COLOR_RED = "\033[31m"
+COLOR_YELLOW = "\033[33m"
+
 def compare_single_file(filename, verbose=False):
     if not filename.endswith(".4-ssa-opt.quad"):
         filename += ".4-ssa-opt.quad"
@@ -13,10 +18,10 @@ def compare_single_file(filename, verbose=False):
     ref_path = os.path.join(REF_DIR, filename)
 
     if not os.path.exists(tmp_path):
-        print(f"[❌] 缺失生成文件: {tmp_path}")
+        print(f"{COLOR_RED}Missing generated file:{COLOR_RESET} {tmp_path}")
         return False
     if not os.path.exists(ref_path):
-        print(f"[❌] 缺失参考文件: {ref_path}")
+        print(f"{COLOR_RED}Missing reference file:{COLOR_RESET} {ref_path}")
         return False
 
     with open(tmp_path, 'r') as f1, open(ref_path, 'r') as f2:
@@ -29,10 +34,10 @@ def compare_single_file(filename, verbose=False):
                                      lineterm=''))
 
     if not diff:
-        print(f"[✅] {filename} 没有差异")
+        print(f"{COLOR_GREEN}PASS:{COLOR_RESET} {filename} has no differences")
         return True
     else:
-        print(f"[⚠️] {filename} 存在差异")
+        print(f"{COLOR_YELLOW}DIFFER:{COLOR_RESET} {filename} has differences")
         if verbose:
             for line in diff:
                 print(line)
@@ -50,14 +55,14 @@ def compare_all(verbose=False):
         if success:
             passed += 1
 
-    print(f"\n✅ {passed} / {total} 测试通过")
+    print(f"\n{COLOR_GREEN}Passed:{COLOR_RESET} {passed} / {total} tests")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="比较 tmp 和 output_example 下的 .4-ssa-opt.quad 文件差异")
+    parser = argparse.ArgumentParser(description="Compare .4-ssa-opt.quad files between tmp and output_example directories")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--file", help="指定文件名，如 'hw8test00' 或 'bubblesort'")
-    group.add_argument("--all", action="store_true", help="对所有参考文件进行比较")
-    parser.add_argument("--verbose", action="store_true", help="展示详细差异")
+    group.add_argument("--file", help="Specify a file name, such as 'hw8test00' or 'bubblesort'")
+    group.add_argument("--all", action="store_true", help="Compare all reference files")
+    parser.add_argument("--verbose", action="store_true", help="Show detailed differences")
     args = parser.parse_args()
 
     if args.all:
