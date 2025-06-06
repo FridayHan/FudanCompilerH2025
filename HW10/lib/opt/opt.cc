@@ -179,6 +179,54 @@ void Opt::modifyFunc() {
     vector<QuadBlock*> *newBlocks = new vector<QuadBlock*>();
     std::set<int> removed_bases;
 
+    // First rewrite PHI arguments that come from constant temps.  SSA form does
+    // not allow constants directly as PHI arguments, so we materialise the
+    // constant in the corresponding predecessor block and replace the argument
+    // with the new temporary.
+    for (auto &block : *func->quadblocklist) {
+        if (!block_executable[block->entry_label->num]) continue;
+        for (auto &stm : *block->quadlist) {
+            if (stm->kind != QuadKind::PHI) continue;
+            auto p = static_cast<QuadPhi*>(stm);
+            if (getRtValue(p->temp->temp->num).getType() == ValueType::ONE_VALUE)
+                continue; // this phi will be removed later
+            for (auto &arg : *p->args) {
+                RtValue v = getRtValue(arg.first->num);
+                if (v.getType() == ValueType::ONE_VALUE) {
+                    int new_num = ++func->last_temp_num;
+                    Temp *new_tmp = new Temp(new_num);
+                    temp_value[new_num] = v;
+
+                    set<Temp*> *def = new set<Temp*>();
+                    def->insert(new_tmp);
+                    set<Temp*> *use = new set<Temp*>();
+                    QuadMove *mv = new QuadMove(nullptr,
+                                                new TempExp(Type::INT, new_tmp),
+                                                new QuadTerm(v.getIntValue()),
+                                                def, use);
+
+                    QuadBlock *pred = label2block[arg.second->num];
+                    if (pred) {
+                        auto &plist = *pred->quadlist;
+                        if (!plist.empty() &&
+                            (plist.back()->kind == QuadKind::JUMP ||
+                             plist.back()->kind == QuadKind::CJUMP)) {
+                            plist.insert(plist.end() - 1, mv);
+                        } else {
+                            plist.push_back(mv);
+                        }
+                    }
+
+                    if (p->use) {
+                        p->use->erase(arg.first);
+                        p->use->insert(new_tmp);
+                    }
+                    arg.first = new_tmp;
+                }
+            }
+        }
+    }
+
     std::set<int> phi_uses;
     for (auto &block : *func->quadblocklist) {
         for (auto &stm : *block->quadlist) {
