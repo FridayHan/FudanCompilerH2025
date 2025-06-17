@@ -160,32 +160,35 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
   stmts->push_back(cond->stm);
 
   if (!node->stm1 && !node->stm2) {
-    cond->true_list->patch(end_label);
-    cond->false_list->patch(end_label);
+    cond->true_list->patch(true_label);
+    cond->false_list->patch(false_label);
+    stmts->push_back(new tree::LabelStm(true_label));
+    stmts->push_back(new tree::Jump(end_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     stmts->push_back(new tree::LabelStm(end_label));
   } else if (!node->stm1) {
-    Label *else_label = visitor_temp_map->newlabel();
     cond->true_list->patch(end_label);
-    cond->false_list->patch(else_label);
+    cond->false_list->patch(false_label);
 
-    stmts->push_back(new tree::LabelStm(else_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     CHECK_NULLPTR(node->stm2);
     node->stm2->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
     stmts->push_back(new tree::LabelStm(end_label));
   } else if (!node->stm2) {
     cond->true_list->patch(true_label);
-    cond->false_list->patch(end_label);
+    cond->false_list->patch(false_label);
 
     stmts->push_back(new tree::LabelStm(true_label));
     CHECK_NULLPTR(node->stm1);
     node->stm1->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
+    stmts->push_back(new tree::Jump(end_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     stmts->push_back(new tree::LabelStm(end_label));
   } else {
-    Label *else_label = visitor_temp_map->newlabel();
     cond->true_list->patch(true_label);
-    cond->false_list->patch(else_label);
+    cond->false_list->patch(false_label);
 
     stmts->push_back(new tree::LabelStm(true_label));
     CHECK_NULLPTR(node->stm1);
@@ -193,7 +196,7 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
     stmts->push_back(new tree::Jump(end_label));
 
-    stmts->push_back(new tree::LabelStm(else_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     CHECK_NULLPTR(node->stm2);
     node->stm2->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
@@ -352,10 +355,19 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
     node->left->accept(*this);
     Tr_cx *left_cx = currentExp->unCx(visitor_temp_map);
 
-    node->right->accept(*this);
-    Tr_cx *right_cx = currentExp->unCx(visitor_temp_map);
+    Label *mid_label = nullptr;
+    Tr_cx *right_cx = nullptr;
 
-    Label *mid_label = visitor_temp_map->newlabel();
+    if (op == "&&") {
+      mid_label = visitor_temp_map->newlabel();
+      node->right->accept(*this);
+      right_cx = currentExp->unCx(visitor_temp_map);
+    } else { // "||"
+      node->right->accept(*this);
+      right_cx = currentExp->unCx(visitor_temp_map);
+      mid_label = visitor_temp_map->newlabel();
+    }
+
     vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
     stmts->push_back(left_cx->stm);
     stmts->push_back(new tree::LabelStm(mid_label));

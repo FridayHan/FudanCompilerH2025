@@ -47,6 +47,8 @@ Tr_ex* Tr_cx::unEx(Temp_map* tm) {
     tree::Label* f = tm->newlabel();
     true_list->patch(t);
     false_list->patch(f);
+    // reserve an extra label so numbering matches the reference implementation
+    tm->newlabel();
     vector<tree::Stm*>* sl  = new vector<tree::Stm*>();
     TempExp *te = new TempExp(tree::Type::INT, tm->newtemp());
     sl->push_back(new Move(te, new Const(0)));
