@@ -49,6 +49,20 @@ void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
 
   current_method = "_^main^_^main";
   method_var_table_map[current_method] = Method_var_table();
+  Method_var_table &tbl = method_var_table_map[current_method];
+  // allocate temps for local variables in declaration order
+  if (node->vdl) {
+    for (auto v : *node->vdl) {
+      CHECK_NULLPTR(v);
+      CHECK_NULLPTR(v->id);
+      string id = v->id->id;
+      tbl.var_temp_map->insert({id, visitor_temp_map->newtemp()});
+      tbl.var_type_map->insert({id, tree::Type::INT});
+    }
+  }
+  // the hidden return formal comes last
+  tbl.var_temp_map->insert({"_^return^_main", visitor_temp_map->newtemp()});
+  tbl.var_type_map->insert({"_^return^_main", tree::Type::INT});
 
   vector<tree::Label *> *exit_labels = new vector<tree::Label *>();
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
@@ -146,32 +160,35 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
   stmts->push_back(cond->stm);
 
   if (!node->stm1 && !node->stm2) {
-    cond->true_list->patch(end_label);
-    cond->false_list->patch(end_label);
+    cond->true_list->patch(true_label);
+    cond->false_list->patch(false_label);
+    stmts->push_back(new tree::LabelStm(true_label));
+    stmts->push_back(new tree::Jump(end_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     stmts->push_back(new tree::LabelStm(end_label));
   } else if (!node->stm1) {
-    Label *else_label = visitor_temp_map->newlabel();
     cond->true_list->patch(end_label);
-    cond->false_list->patch(else_label);
+    cond->false_list->patch(false_label);
 
-    stmts->push_back(new tree::LabelStm(else_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     CHECK_NULLPTR(node->stm2);
     node->stm2->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
     stmts->push_back(new tree::LabelStm(end_label));
   } else if (!node->stm2) {
     cond->true_list->patch(true_label);
-    cond->false_list->patch(end_label);
+    cond->false_list->patch(false_label);
 
     stmts->push_back(new tree::LabelStm(true_label));
     CHECK_NULLPTR(node->stm1);
     node->stm1->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
+    stmts->push_back(new tree::Jump(end_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     stmts->push_back(new tree::LabelStm(end_label));
   } else {
-    Label *else_label = visitor_temp_map->newlabel();
     cond->true_list->patch(true_label);
-    cond->false_list->patch(else_label);
+    cond->false_list->patch(false_label);
 
     stmts->push_back(new tree::LabelStm(true_label));
     CHECK_NULLPTR(node->stm1);
@@ -179,7 +196,7 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
     stmts->push_back(new tree::Jump(end_label));
 
-    stmts->push_back(new tree::LabelStm(else_label));
+    stmts->push_back(new tree::LabelStm(false_label));
     CHECK_NULLPTR(node->stm2);
     node->stm2->accept(*this);
     stmts->push_back(static_cast<tree::Stm *>(visit_tree_result));
@@ -197,8 +214,7 @@ void ASTToTreeVisitor::visit(fdmj::While *node) {
   CHECK_NULLPTR(node->stm);
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
-  Tr_cx *cond = exp->unCx(visitor_temp_map);
+  Tr_cx *cond = currentExp->unCx(visitor_temp_map);
 
   Label *test_label = visitor_temp_map->newlabel();
   Label *body_label = visitor_temp_map->newlabel();
@@ -230,7 +246,7 @@ void ASTToTreeVisitor::visit(fdmj::Assign *node) {
   CHECK_NULLPTR(node->left);
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+  Tr_Exp *exp = currentExp;
   node->left->accept(*this);
   Temp *temp = static_cast<TempExp *>(visit_tree_result)->temp;
   visit_tree_result = new tree::Move(new tree::TempExp(tree::Type::INT, temp),
@@ -271,7 +287,7 @@ void ASTToTreeVisitor::visit(fdmj::Return *node) {
   if (node->exp) {
     CHECK_NULLPTR(node->exp);
     node->exp->accept(*this);
-    Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+    Tr_Exp *exp = currentExp;
     visit_tree_result = new tree::Return(exp->unEx(visitor_temp_map)->exp);
   } else {
     visit_tree_result = new tree::Return(nullptr);
@@ -284,7 +300,7 @@ void ASTToTreeVisitor::visit(fdmj::PutInt *node) {
   CHECK_NULLPTR(node->exp);
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+  Tr_Exp *exp = currentExp;
   vector<tree::Exp *> *args = new vector<tree::Exp *>();
   args->push_back(exp->unEx(visitor_temp_map)->exp);
   visit_tree_result = new tree::ExpStm(
@@ -297,7 +313,7 @@ void ASTToTreeVisitor::visit(fdmj::PutCh *node) {
   CHECK_NULLPTR(node->exp);
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+  Tr_Exp *exp = currentExp;
   vector<tree::Exp *> *args = new vector<tree::Exp *>();
   args->push_back(exp->unEx(visitor_temp_map)->exp);
   visit_tree_result = new tree::ExpStm(
@@ -339,10 +355,19 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
     node->left->accept(*this);
     Tr_cx *left_cx = currentExp->unCx(visitor_temp_map);
 
-    node->right->accept(*this);
-    Tr_cx *right_cx = currentExp->unCx(visitor_temp_map);
+    Label *mid_label = nullptr;
+    Tr_cx *right_cx = nullptr;
 
-    Label *mid_label = visitor_temp_map->newlabel();
+    if (op == "&&") {
+      mid_label = visitor_temp_map->newlabel();
+      node->right->accept(*this);
+      right_cx = currentExp->unCx(visitor_temp_map);
+    } else { // "||"
+      node->right->accept(*this);
+      right_cx = currentExp->unCx(visitor_temp_map);
+      mid_label = visitor_temp_map->newlabel();
+    }
+
     vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
     stmts->push_back(left_cx->stm);
     stmts->push_back(new tree::LabelStm(mid_label));
@@ -368,19 +393,21 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
     }
 
     currentExp = new Tr_cx(true_list, false_list, seq);
-    visit_tree_result = currentExp->unEx(visitor_temp_map)->exp;
+    visit_tree_result = nullptr;
     return;
   }
 
   // 算术运算 + - * /
   else if (op == "+" || op == "-" || op == "*" || op == "/") {
     node->left->accept(*this);
-    Tr_ex *left = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+    Tr_Exp *left = currentExp;
     node->right->accept(*this);
-    Tr_ex *right = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+    Tr_Exp *right = currentExp;
 
     tree::Exp *binop =
-        new tree::Binop(tree::Type::INT, op, left->exp, right->exp);
+        new tree::Binop(tree::Type::INT, op,
+                        left->unEx(visitor_temp_map)->exp,
+                        right->unEx(visitor_temp_map)->exp);
     visit_tree_result = binop;
     currentExp = new Tr_ex(binop);
     return;
@@ -390,15 +417,17 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
   else if (op == "==" || op == "!=" || op == ">" || op == ">=" || op == "<" ||
            op == "<=") {
     node->left->accept(*this);
-    Tr_ex *left = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+    Tr_Exp *left = currentExp;
     node->right->accept(*this);
-    Tr_ex *right = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+    Tr_Exp *right = currentExp;
 
     Label *true_label = visitor_temp_map->newlabel();
     Label *false_label = visitor_temp_map->newlabel();
 
     tree::Cjump *cj =
-        new tree::Cjump(op, left->exp, right->exp, true_label, false_label);
+        new tree::Cjump(op, left->unEx(visitor_temp_map)->exp,
+                        right->unEx(visitor_temp_map)->exp, true_label,
+                        false_label);
 
     Patch_list *true_list = new Patch_list();
     Patch_list *false_list = new Patch_list();
@@ -407,7 +436,7 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
 
     Tr_cx *cx = new Tr_cx(true_list, false_list, cj);
     currentExp = cx;
-    visit_tree_result = cx->unEx(visitor_temp_map)->exp;
+    visit_tree_result = nullptr;
     return;
   }
 }
@@ -419,13 +448,17 @@ void ASTToTreeVisitor::visit(fdmj::UnaryOp *node) {
   CHECK_NULLPTR(node->exp);
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+  Tr_Exp *exp = currentExp;
   tree::Type t = tree::Type::INT;
 
   if (node->op->op == "-") {
-    visit_tree_result = new tree::Binop(t, "-", exp->exp, new tree::Const(0));
+    visit_tree_result =
+        new tree::Binop(t, "-", exp->unEx(visitor_temp_map)->exp,
+                        new tree::Const(0));
   } else if (node->op->op == "!") {
-    visit_tree_result = new tree::Binop(t, "==", exp->exp, new tree::Const(0));
+    visit_tree_result =
+        new tree::Binop(t, "==", exp->unEx(visitor_temp_map)->exp,
+                        new tree::Const(0));
   }
   currentExp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
 }
@@ -481,10 +514,11 @@ void ASTToTreeVisitor::visit(fdmj::Esc *node) {
   }
 
   node->exp->accept(*this);
-  Tr_ex *exp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
+  Tr_Exp *exp = currentExp;
 
   visit_tree_result =
-      new tree::Eseq(tree::Type::INT, new tree::Seq(stmts), exp->exp);
+      new tree::Eseq(tree::Type::INT, new tree::Seq(stmts),
+                     exp->unEx(visitor_temp_map)->exp);
   currentExp = new Tr_ex(static_cast<tree::Exp *>(visit_tree_result));
 }
 
