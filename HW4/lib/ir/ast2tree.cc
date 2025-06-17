@@ -90,7 +90,7 @@ void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
   blocks->push_back(new tree::Block(entry_label, exit_labels, stmts));
   visit_tree_result = new tree::FuncDecl(
       "_^main^_^main", nullptr, blocks, tree::Type::INT,
-      visitor_temp_map->next_temp - 1, visitor_temp_map->next_label - 1);
+      visitor_temp_map->next_temp, visitor_temp_map->next_label - 1);
 }
 
 void ASTToTreeVisitor::visit(fdmj::ClassDecl *node) {
