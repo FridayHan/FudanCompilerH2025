@@ -37,8 +37,10 @@ void ASTToTreeVisitor::visit(fdmj::Program *node) {
     node->main->accept(*this);
   }
   vector<tree::FuncDecl *> *funcdecllist = new vector<tree::FuncDecl *>();
-  funcdecllist->push_back(
-      static_cast<tree::FuncDecl *>(this->visit_tree_result));
+  if (visit_tree_result)
+    funcdecllist->push_back(
+        static_cast<tree::FuncDecl *>(this->visit_tree_result));
+  visit_tree_result = new tree::Program(funcdecllist);
 }
 
 void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
@@ -48,10 +50,8 @@ void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
   current_method = "_^main^_^main";
   method_var_table_map[current_method] = Method_var_table();
 
-  Label *entry_label = visitor_temp_map->newlabel();
   vector<tree::Label *> *exit_labels = new vector<tree::Label *>();
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
-  stmts->push_back(new tree::LabelStm(entry_label));
 
   if (node->vdl) {
     for (auto v : *node->vdl) {
@@ -69,11 +69,14 @@ void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
     }
   }
 
+  Label *entry_label = visitor_temp_map->newlabel();
+  stmts->insert(stmts->begin(), new tree::LabelStm(entry_label));
+
   vector<tree::Block *> *blocks = new vector<tree::Block *>();
   blocks->push_back(new tree::Block(entry_label, exit_labels, stmts));
   visit_tree_result = new tree::FuncDecl(
       "_^main^_^main", nullptr, blocks, tree::Type::INT,
-      visitor_temp_map->next_temp - 1, visitor_temp_map->next_label - 1);
+      visitor_temp_map->next_temp, visitor_temp_map->next_label - 1);
 }
 
 void ASTToTreeVisitor::visit(fdmj::ClassDecl *node) {
