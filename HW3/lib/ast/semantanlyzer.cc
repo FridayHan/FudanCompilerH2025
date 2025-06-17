@@ -95,10 +95,10 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
                 } else {
                     class_vars.insert(var_name);
                 }
-                
+
                 VarDecl* parent_var = nullptr;
                 string parent_class = "";
-                
+
                 set<string> ancestors = name_maps->get_ancestors(class_name);
                 for (const auto& anc : ancestors) {
                     if (name_maps->is_class_var(anc, var_name)) {
@@ -107,12 +107,16 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
                         break;
                     }
                 }
-                
+
                 if (parent_var) {
                     cerr << "Warning at line " << vd->getPos()->sline << ", column " << vd->getPos()->scolumn
-                         << ": Variable '" << var_name << "' in class '" << class_name 
+                         << ": Variable '" << var_name << "' in class '" << class_name
                          << "' hides inherited variable from class '" << parent_class << "'" << endl;
                 }
+            }
+
+            if (vd) {
+                vd->accept(*this);
             }
         }
     }
@@ -129,6 +133,10 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
                     class_methods.insert(method_name);
                 }
             }
+
+            if (md) {
+                md->accept(*this);
+            }
         }
     }
     
@@ -140,12 +148,8 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
         }
     }
     
-    if (node->id) {
-        node->id->accept(*this);
-    }
-    if (node->eid) {
-        node->eid->accept(*this);
-    }
+    // do not visit the class name or the parent name here since they are
+    // declarations rather than usages and should not carry semantic info
     
     current_class = saved_class;
 }
@@ -409,22 +413,7 @@ void AST_Semant_Visitor::visit(BinaryOp* node) {
         node->right->accept(*this);
     }
     
-    // 若左右操作数为 IdExp，则确保其语义信息已设置
-    if (node->left && node->left->getASTKind() == ASTKind::IdExp) {
-        IdExp* idExp = static_cast<IdExp*>(node->left);
-        if (semant_map->getSemant(idExp) == nullptr) {
-            // 设置为 Value 类型，INT 类型，lvalue 为 true（示例默认值，可按需要调整）
-            AST_Semant* sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(0), true);
-            semant_map->setSemant(idExp, sem);
-        }
-    }
-    if (node->right && node->right->getASTKind() == ASTKind::IdExp) {
-        IdExp* idExp = static_cast<IdExp*>(node->right);
-        if (semant_map->getSemant(idExp) == nullptr) {
-            AST_Semant* sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>(0), true);
-            semant_map->setSemant(idExp, sem);
-        }
-    }
+    // do not force semantics for IdExp here; they will be resolved in their own visit
     
     AST_Semant* left_semant = semant_map->getSemant(node->left);
     AST_Semant* right_semant = semant_map->getSemant(node->right);
@@ -534,24 +523,46 @@ void AST_Semant_Visitor::visit(Nested* node) {
 void AST_Semant_Visitor::visit(CallStm* node) {
     DEBUG_PRINT("Visiting CallStm");
     CHECK_NULLPTR(node);
-    
+
     string saved_class = current_class;
-    
+    string class_name = current_class;
+
     if (node->obj) {
         node->obj->accept(*this);
+        AST_Semant* obj_semant = semant_map->getSemant(node->obj);
+        if (obj_semant && obj_semant->get_type() == TypeKind::CLASS) {
+            class_name = get<string>(obj_semant->get_type_par());
+            if (!class_name.empty()) {
+                current_class = class_name;
+            }
+        }
     }
-    
+
     if (node->name) {
         node->name->accept(*this);
+        if (name_maps->is_method(class_name, node->name->id)) {
+            Type* mtype = name_maps->get_method_type(class_name, node->name->id);
+            TypeKind mkind = mtype ? mtype->typeKind : TypeKind::INT;
+            variant<monostate, string, int> tpar{};
+            if (mtype) {
+                if (mkind == TypeKind::CLASS && mtype->cid) tpar = mtype->cid->id;
+                else if (mkind == TypeKind::ARRAY && mtype->arity) tpar = mtype->arity->val;
+            }
+            AST_Semant* msem = new AST_Semant(AST_Semant::Kind::MethodName, mkind, tpar, false);
+            semant_map->setSemant(node->name, msem);
+        }
     }
-    
+
+    // parameters are evaluated in the caller's context
+    current_class = saved_class;
+
     if (node->par) {
         for (auto p : *(node->par)) {
             CHECK_NULLPTR(p);
             p->accept(*this);
         }
     }
-    
+
     current_class = saved_class;
 }
 
@@ -762,13 +773,30 @@ void AST_Semant_Visitor::visit(CallExp* node) {
     
     if (node->name) {
         method_name = node->name->id;
-        
+
         if (!name_maps->is_method(class_name, method_name)) {
             cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                  << ": Method '" << method_name << "' not found in class '" << class_name << "'" << endl;
+        } else {
+            // record semantic info for the method identifier itself
+            Type* mtype = name_maps->get_method_type(class_name, method_name);
+            TypeKind mkind = mtype ? mtype->typeKind : TypeKind::INT;
+            variant<monostate, string, int> tpar{};
+            if (mtype) {
+                if (mkind == TypeKind::CLASS && mtype->cid) {
+                    tpar = mtype->cid->id;
+                } else if (mkind == TypeKind::ARRAY && mtype->arity) {
+                    tpar = mtype->arity->val;
+                }
+            }
+            AST_Semant* msem = new AST_Semant(AST_Semant::Kind::MethodName, mkind, tpar, false);
+            semant_map->setSemant(node->name, msem);
         }
     }
-    
+
+    // parameters are evaluated in the caller's context
+    current_class = saved_class;
+
     vector<AST_Semant*> param_semants;
     if (node->par) {
         for (auto p : *(node->par)) {
@@ -1186,12 +1214,12 @@ void AST_Semant_Visitor::visit(IdExp* node) {
         }
     }
 
-    // 未定义的标识符
     if (!found) {
         cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
              << ": Undefined identifier: '" << node->id << "'" << endl;
         cerr << "  Current context - Class: " << (current_class.empty() ? "none" : current_class)
              << ", Method: " << (current_method.empty() ? "none" : current_method) << endl;
+        return;
     }
 
     AST_Semant* semant = new AST_Semant(s_kind, type_kind, type_par, is_lvalue);
