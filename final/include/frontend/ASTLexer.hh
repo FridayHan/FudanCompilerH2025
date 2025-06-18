@@ -9,11 +9,20 @@
 #include <FlexLexer.h>
 #undef yyFlexLexer
 #endif
+#include "ASTheader.hh"
 #include "FDMJAST.hh"
 #include "ast_location.hh"
 
 using namespace std;
 using namespace fdmj;
+
+#define IntExpList vector<IntExp *>
+#define ClassDeclList vector<ClassDecl *>
+#define VarDeclList vector<VarDecl *>
+#define MethodDeclList vector<MethodDecl *>
+#define FormalList vector<Formal *>
+#define StmList vector<Stm *>
+#define ExpList vector<Exp *>
 
 namespace fdmj {
 // These are the types of values (yylval) that a token can have
@@ -23,14 +32,24 @@ public:
   int i;
   string s;
   IntExp *intExp;
+  IntExpList *intExpList;
   IdExp *idExp;
   OpExp *opExp;
+  BoolExp *boolExp;
   Program *program;
   MainMethod *mainMethod;
+  ClassDecl *classDecl;
+  ClassDeclList *classDeclList;
+  Type *type;
+  VarDecl *varDecl;
+  VarDeclList *varDeclList;
+  MethodDecl *methodDecl;
+  MethodDeclList *methodDeclList;
+  FormalList *formalList;
   Stm *stm;
-  vector<Stm *> *stmList;
+  StmList *stmList;
   Exp *exp;
-
+  ExpList *expList;
   Program *root;
 };
 

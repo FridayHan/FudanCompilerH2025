@@ -15,6 +15,7 @@
   #include "ASTLexer.hh"
   #include "ASTheader.hh"
   #include "FDMJAST.hh"
+  #include "debug.hh"
 
   using namespace std;
   using namespace fdmj;
@@ -42,11 +43,12 @@
     #endif
 };
 
-%code {
+%code
+{
     namespace fdmj 
     {
         template<typename RHS>
-        void calcLocation(location_t &current, const RHS &rhs, const std::size_t n);
+        void calcLocation(location_t &current, const RHS &rhs, const size_t n);
     }
     
     #define YYLLOC_DEFAULT(Cur, Rhs, N) calcLocation(Cur, Rhs, N)
@@ -56,158 +58,587 @@
 
 //terminals with no value 
 %token PUBLIC INT MAIN RETURN 
-//terminals with value
+%token IF ELSE WHILE CONTINUE BREAK PUTINT PUTCH PUTARRAY STARTTIME STOPTIME
+%token TRUE FALSE LENGTH GETINT GETCH GETARRAY THIS
+%token CLASS EXTENDS
 %token<i> NONNEGATIVEINT
 %token<s> IDENTIFIER
 %token '(' ')' '[' ']' '{' '}' '=' ',' ';' '.' 
-%token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR
+%token ADD MINUS TIMES DIVIDE EQ NE LT LE GT GE AND OR NOT
+
+%left OR
+%left AND
+%left EQ NE
+%left LT LE GT GE
+%left ADD MINUS
+%left TIMES DIVIDE
+%right UMINUS
+%right NOT
+%left '.'
+%left '[' ']'
+%left '(' ')'
+%nonassoc IFX
+%nonassoc ELSE
+
 //non-terminals, need type information only (not tokens)
-%type <program> PROG 
-%type <mainMethod> MAINMETHOD 
-%type <stm> STM
+%type <intExp> NUM
+%type <idExp> ID
+%type <program> PROG
+%type <mainMethod> MAINMETHOD
+%type <varDeclList> VARDECLLIST
+%type <varDecl> VARDECL
+%type <intExp> CONST
+%type <intExpList> CONSTLIST
+%type <intExpList> CONSTREST
 %type <stmList> STMLIST
+%type <stm> STM
 %type <exp> EXP
-%type <idExp> ID 
+%type <expList> EXPLIST
+%type <expList> EXPREST
+%type <classDeclList> CLASSDECLLIST
+%type <classDecl> CLASSDECL
+%type <methodDeclList> METHODDECLLIST
+%type <methodDecl> METHODDECL
+%type <type> TYPE
+%type <formalList> FORMALLIST
+%type <formalList> FORMALREST
+
 
 %start PROG
 %expect 0
 
 %%
-PROG: MAINMETHOD 
+// Intermediate constructs
+NUM: NONNEGATIVEINT
+  {
+    DEBUG_PRINT2("NonNegativeInt: ", $1);
+    $$ = new IntExp(p, $1);
+  }
+  ;
+
+ID: IDENTIFIER
+  {
+    DEBUG_PRINT2("Identifier: ", $1);
+    $$ = new IdExp(p, $1);
+  }
+  ;
+
+// Formal syntax
+PROG: MAINMETHOD CLASSDECLLIST
   { 
-#ifdef DEBUG
-    cerr << "Program" << endl;
-#endif
-    result->root = new Program(p, $1);
-    //$$ = result->root;
+    DEBUG_PRINT("Program");
+    result->root = new Program(p, $1, $2);
   }
   ;
-MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' STMLIST '}'
+
+MAINMETHOD: PUBLIC INT MAIN '(' ')' '{' VARDECLLIST STMLIST '}'
   {
-#ifdef DEBUG
-    cerr << "MainMethod" << endl;
-#endif
-    $$ = new MainMethod(p, $7) ;
+    DEBUG_PRINT("MainMethod");
+    $$ = new MainMethod(p, $7, $8);
   }
   ;
-STMLIST: // empty
+
+VARDECLLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "STMLIST empty" << endl;
-#endif
+    DEBUG_PRINT("VarDeclList empty");
+    $$ = new vector<VarDecl*>();
+  }
+  |
+  VARDECL VARDECLLIST
+  {
+    DEBUG_PRINT("VarDecl VarDeclList");
+    vector<VarDecl*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+VARDECL: CLASS ID ID ';'
+  {
+    DEBUG_PRINT("Class VarDecl");
+    $$ = new VarDecl(p, new Type(p, $2), $3);
+  }
+  |
+  INT ID ';'
+  {
+    DEBUG_PRINT("Int VarDecl");
+    $$ = new VarDecl(p, new Type(p), $2);
+  }
+  |
+  INT ID '=' CONST ';'
+  {
+    DEBUG_PRINT("Int VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p), $2, $4);
+  }
+  |
+  INT '[' ']' ID ';'
+  {
+    DEBUG_PRINT("Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4);
+  }
+  |
+  INT '[' ']' ID '=' '{' CONSTLIST '}' ';'
+  {
+    DEBUG_PRINT("Array VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7); // TODO: 使用 $7->size() 即可获取初始化 vector 的长度
+  }
+  |
+  INT '[' NUM ']' ID ';'
+  {
+    DEBUG_PRINT("Fixed-size Array VarDecl");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, $3), $5);
+  }
+  |
+  INT '[' NUM ']' ID '=' '{' CONSTLIST '}' ';'
+  {
+    DEBUG_PRINT("Fixed-size Array VarDecl with initialization");
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, $3), $5, $8);
+  }
+  ;
+
+CONST: NUM
+  {
+    DEBUG_PRINT("Const");
+    $$ = $1;
+  }
+  |
+  MINUS NUM %prec UMINUS
+  {
+    DEBUG_PRINT("Negative Const");
+    $$ = new IntExp(p, -$2->val);
+  }
+  ;
+
+CONSTLIST: /* empty */
+  {
+    DEBUG_PRINT("ConstList empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  CONST CONSTREST
+  {
+    DEBUG_PRINT("Const ConstList");
+    vector<IntExp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+CONSTREST: /* empty */
+  {
+    DEBUG_PRINT("ConstRest empty");
+    $$ = new vector<IntExp*>();
+  }
+  |
+  ',' CONST CONSTREST
+  {
+    DEBUG_PRINT("ConstRest");
+    vector<IntExp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+  ;
+
+STMLIST: /* empty */
+  {
+    DEBUG_PRINT("StmList empty");
     $$ = new vector<Stm*>();
   }
   |
   STM STMLIST
   {
-#ifdef DEBUG
-    cerr << "STM STMLIST" << endl;
-#endif
+    DEBUG_PRINT("Stm Stmlist");
     vector<Stm*> *v = $2;
-    v->push_back($1);
-    rotate(v->begin(), v->end() - 1, v->end());
+    v->insert(v->begin(), $1);
     $$ = v;
   }
   ;
-STM: ID '=' EXP ';'
+
+STM: '{' STMLIST '}'
   {
-#ifdef DEBUG
-    cerr << "Assign" << endl;
-#endif
+    DEBUG_PRINT("Block Stm");
+    $$ = new Nested(p, $2);
+  }
+  |
+  IF '(' EXP ')' STM ELSE STM
+  {
+    DEBUG_PRINT("If-Else Stm");
+    $$ = new If(p, $3, $5, $7);
+  }
+  |
+  IF '(' EXP ')' STM %prec IFX
+  {
+    DEBUG_PRINT("If Stm");
+    $$ = new If(p, $3, $5);
+  }
+  |
+  WHILE '(' EXP ')' STM
+  {
+    DEBUG_PRINT("While Stm");
+    $$ = new While(p, $3, $5);
+  }
+  |
+  WHILE '(' EXP ')' ';'
+  {
+    DEBUG_PRINT("While Stm with empty body");
+    $$ = new While(p, $3);
+  }
+  |
+  EXP '=' EXP ';'
+  {
+    DEBUG_PRINT("Assign Stm");
     $$ = new Assign(p, $1, $3);
+  }
+  |
+  EXP '.' ID '(' EXPLIST ')' ';'
+  {
+    DEBUG_PRINT("Method Call Stm");
+    $$ = new CallStm(p, $1, $3, $5);
+  }
+  |
+  CONTINUE ';'
+  {
+    DEBUG_PRINT("Continue Stm");
+    $$ = new Continue(p);
+  }
+  |
+  BREAK ';'
+  {
+    DEBUG_PRINT("Break Stm");
+    $$ = new Break(p);
   }
   |
   RETURN EXP ';'
   {
-#ifdef DEBUG
-    cerr << "Return" << endl;
-#endif
+    DEBUG_PRINT("Return Stm");
     $$ = new Return(p, $2);
   }
+  |
+  PUTINT '(' EXP ')' ';'
+  {
+    DEBUG_PRINT("PutInt Stm");
+    $$ = new PutInt(p, $3);
+  }
+  |
+  PUTCH '(' EXP ')' ';'
+  {
+    DEBUG_PRINT("PutCh Stm");
+    $$ = new PutCh(p, $3);
+  }
+  |
+  PUTARRAY '(' EXP ',' EXP ')' ';'
+  {
+    DEBUG_PRINT("PutArray Stm");
+    $$ = new PutArray(p, $3, $5);
+  }
+  |
+  STARTTIME '(' ')' ';'
+  {
+    DEBUG_PRINT("StartTime Stm");
+    $$ = new Starttime(p);
+  }
+  |
+  STOPTIME '(' ')' ';'
+  {
+    DEBUG_PRINT("StopTime Stm");
+    $$ = new Stoptime(p);
+  }
   ;
-EXP: '(' EXP ADD EXP ')'
+
+EXP: NUM
   {
-#ifdef DEBUG
-    cerr << "EXP ADD EXP" << endl;
-#endif
-    Pos *p1 = new Pos(@3.sline, @3.scolumn, @3.eline, @3.ecolumn);
-    $$ = new BinaryOp(p, $2, new OpExp(p1, "+"), $4);
+    DEBUG_PRINT("IntExp Exp");
+    $$ = $1;
   }
   |
-  '(' EXP MINUS EXP ')'
+  TRUE
   {
-#ifdef DEBUG
-    cerr << "EXP MINUS EXP" << endl;
-#endif
-    Pos *p1 = new Pos(@3.sline, @3.scolumn, @3.eline, @3.ecolumn);
-    $$ = new BinaryOp(p, $2, new OpExp(p1, "-"), $4);
+    DEBUG_PRINT("Truemr Exp");
+    $$ = new BoolExp(p, true);
   }
   |
-  '(' EXP TIMES EXP ')'
+  FALSE
   {
-#ifdef DEBUG
-    cerr << "EXP TIMES EXP" << endl;
-#endif
-    Pos *p1 = new Pos(@3.sline, @3.scolumn, @3.eline, @3.ecolumn);
-    $$ = new BinaryOp(p, $2, new OpExp(p1, "*"), $4);
+    DEBUG_PRINT("False Exp");
+    $$ = new BoolExp(p, false);
   }
   |
-  '(' EXP DIVIDE EXP ')'
+  LENGTH '(' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "EXP DIVIDE EXP" << endl;
-#endif
-    Pos *p1 = new Pos(@3.sline, @3.scolumn, @3.eline, @3.ecolumn);
-    $$ = new BinaryOp(p, $2, new OpExp(p1, "/"), $4);
+    DEBUG_PRINT("Length Exp");
+    $$ = new Length(p, $3);
   }
   |
-  NONNEGATIVEINT
+  GETINT '(' ')'
   {
-#ifdef DEBUG
-    cerr << "NonNegativeInt: " << $1 << endl;
-#endif
-    $$ = new IntExp(p, $1);
+    DEBUG_PRINT("GetInt Exp");
+    $$ = new GetInt(p);
   }
   |
-  '(' MINUS EXP ')'
+  GETCH '(' ')'
   {
-#ifdef DEBUG
-    cerr << "- EXP" << endl;
-#endif
-    Pos *p1 = new Pos(@2.sline, @2.scolumn, @2.eline, @2.ecolumn);
-    $$ =  new UnaryOp(p, new OpExp(p1, "-"), $3);
+    DEBUG_PRINT("GetCh Exp");
+    $$ = new GetCh(p);
+  }
+  |
+  GETARRAY '(' EXP ')'
+  {
+    DEBUG_PRINT("GetArray Exp");
+    $$ = new GetArray(p, $3);
+  }
+  |
+  ID
+  {
+    DEBUG_PRINT("Identifier Exp");
+    $$ = $1;
+  }
+  |
+  THIS
+  {
+    DEBUG_PRINT("This Exp");
+    $$ = new This(p);
+  }
+  |
+  EXP ADD EXP
+  {
+    DEBUG_PRINT("Add Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "+"), $3);
+  }
+  |
+  EXP MINUS EXP
+  {
+    DEBUG_PRINT("Minus Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "-"), $3);
+  }
+  |
+  EXP TIMES EXP
+  {
+    DEBUG_PRINT("Times Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "*"), $3);
+  }
+  |
+  EXP DIVIDE EXP
+  {
+    DEBUG_PRINT("Divide Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "/"), $3);
+  }
+  |
+  EXP AND EXP
+  {
+    DEBUG_PRINT("And Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "&&"), $3);
+  }
+  |
+  EXP OR EXP
+  {
+    DEBUG_PRINT("Or Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "||"), $3);
+  }
+  |
+  EXP EQ EXP
+  {
+    DEBUG_PRINT("Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "=="), $3);
+  }
+  |
+  EXP NE EXP
+  {
+    DEBUG_PRINT("Not Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "!="), $3);
+  }
+  |
+  EXP LT EXP
+  {
+    DEBUG_PRINT("Less Than Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<"), $3);
+  }
+  |
+  EXP LE EXP
+  {
+    DEBUG_PRINT("Less Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, "<="), $3);
+  }
+  |
+  EXP GT EXP
+  {
+    DEBUG_PRINT("Greater Than Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">"), $3);
+  }
+  |
+  EXP GE EXP
+  {
+    DEBUG_PRINT("Greater Equal Exp");
+    $$ = new BinaryOp(p, $1, new OpExp(p, ">="), $3);
+  }
+  |
+  NOT EXP
+  {
+    DEBUG_PRINT("Not Exp");
+    $$ = new UnaryOp(p, new OpExp(p, "!"), $2);
+  }
+  |
+  MINUS EXP %prec UMINUS
+  {
+    DEBUG_PRINT("Negate Exp");
+    $$ = new UnaryOp(p, new OpExp(p, "-"), $2);
   }
   |
   '(' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "( EXP )" << endl;
-#endif
+    DEBUG_PRINT("Parenthesized Exp");
     $$ = $2;
   }
   |
   '(' '{' STMLIST '}' EXP ')'
   {
-#ifdef DEBUG
-    cerr << "( { STMLIST } EXP )" << endl;
-#endif
+    DEBUG_PRINT("Block Exp");
     $$ = new Esc(p, $3, $5);
   }
   |
-  ID
+  EXP '.' ID
   {
-#ifdef DEBUG
-    cerr << "ID" << endl;
-#endif
-    $$ = $1;
+    DEBUG_PRINT("Field Access Exp");
+    $$ = new ClassVar(p, $1, $3);
+  }
+  |
+  EXP '.' ID '(' EXPLIST ')'
+  {
+    DEBUG_PRINT("Method Call Exp");
+    $$ = new CallExp(p, $1, $3, $5);
+  }
+  |
+  EXP '[' EXP ']'
+  {
+    DEBUG_PRINT("Array Access Exp");
+    $$ = new ArrayExp(p, $1, $3);
   }
   ;
-ID: IDENTIFIER
+
+EXPLIST: /* empty */
   {
-#ifdef DEBUG
-    cerr << "Identifier: " << $1 << endl;
-#endif
-    $$ = new IdExp(p, $1);
+    DEBUG_PRINT("ExpList empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  EXP EXPREST
+  {
+    DEBUG_PRINT("Exp ExpRest");
+    vector<Exp*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+EXPREST: /* empty */
+  {
+    DEBUG_PRINT("ExpRest empty");
+    $$ = new vector<Exp*>();
+  }
+  |
+  ',' EXP EXPREST
+  {
+    DEBUG_PRINT("ExpRest");
+    vector<Exp*> *v = $3;
+    v->insert(v->begin(), $2);
+    $$ = v;
+  }
+
+CLASSDECLLIST: /* empty */
+  {
+    DEBUG_PRINT("ClassDeclList empty");
+    $$ = new vector<ClassDecl*>();
+  }
+  |
+  CLASSDECL CLASSDECLLIST
+  {
+    DEBUG_PRINT("ClassDecl ClassDeclList");
+    vector<ClassDecl*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+CLASSDECL: PUBLIC CLASS ID '{' VARDECLLIST METHODDECLLIST '}'
+  {
+    DEBUG_PRINT("ClassDecl");
+    $$ = new ClassDecl(p, $3, nullptr, $5, $6);
+  }
+  |
+  PUBLIC CLASS ID EXTENDS ID '{' VARDECLLIST METHODDECLLIST '}'
+  {
+    DEBUG_PRINT("ClassDecl with extends");
+    $$ = new ClassDecl(p, $3, $5, $7, $8);
+  }
+  ;
+
+METHODDECLLIST: /* empty */
+  {
+    DEBUG_PRINT("MethodDeclList empty");
+    $$ = new vector<MethodDecl*>();
+  }
+  |
+  METHODDECL METHODDECLLIST
+  {
+    DEBUG_PRINT("MethodDecl MethodDeclList");
+    vector<MethodDecl*> *v = $2;
+    v->insert(v->begin(), $1);
+    $$ = v;
+  }
+  ;
+
+METHODDECL: PUBLIC TYPE ID '(' FORMALLIST ')' '{' VARDECLLIST STMLIST '}'
+  {
+    DEBUG_PRINT("MethodDecl");
+    $$ = new MethodDecl(p, $2, $3, $5, $8, $9);
+  }
+  ;
+
+TYPE: CLASS ID
+  {
+    DEBUG_PRINT("Class Type");
+    $$ = new Type(p, TypeKind::CLASS, $2, nullptr);
+  }
+  |
+  INT
+  {
+    DEBUG_PRINT("Int Type");
+    $$ = new Type(p);
+  }
+  |
+  INT '[' ']'
+  {
+    DEBUG_PRINT("Array Type");
+    $$ = new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0));
+  }
+  ;
+
+FORMALLIST: /* empty */
+  {
+    DEBUG_PRINT("FormalList empty");
+    $$ = new vector<Formal*>();
+  }
+  |
+  TYPE ID FORMALREST
+  {
+    DEBUG_PRINT("FormalList");
+    vector<Formal*> *v = $3;
+    v->insert(v->begin(), new Formal(p, $1, $2));
+    $$ = v;
+  }
+  ;
+
+FORMALREST: /* empty */
+  {
+    DEBUG_PRINT("FormalRest empty");
+    $$ = new vector<Formal*>();
+  }
+  |
+  ',' TYPE ID FORMALREST
+  {
+    DEBUG_PRINT("FormalRest");
+    vector<Formal*> *v = $4;
+    v->insert(v->begin(), new Formal(p, $2, $3));
+    $$ = v;
   }
   ;
 
@@ -226,16 +657,16 @@ int yywrap() {
 namespace fdmj 
 {
     template<typename RHS>
-    inline void calcLocation(location_t &current, const RHS &rhs, const std::size_t n)
+    inline void calcLocation(location_t &current, const RHS &rhs, const size_t n)
     {
-        current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
-                                    YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
-        p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
+      current = location_t(YYRHSLOC(rhs, 1).sline, YYRHSLOC(rhs, 1).scolumn, 
+                                  YYRHSLOC(rhs, n).eline, YYRHSLOC(rhs, n).ecolumn);
+      p = new Pos(current.sline, current.scolumn, current.eline, current.ecolumn);
     }
     
-    void ASTParser::error(const location_t &location, const std::string &message)
+    void ASTParser::error(const location_t &location, const string &message)
     {
-        std::cerr << "Error at lines " << location << ": " << message << std::endl;
+      cerr << "Error at lines " << location << ": " << message << endl;
     }
 
   Program* fdmjParser(ifstream &fp, const bool debug) {
@@ -252,7 +683,7 @@ namespace fdmj
   }
 
   Program*  fdmjParser(const string &filename, const bool debug) {
-    std::ifstream fp(filename);
+    ifstream fp(filename);
     if (!fp) {
       cout << "Error: cannot open file " << filename << endl;
       return nullptr;

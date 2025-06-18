@@ -1,15 +1,20 @@
+#include <iostream>
+#include <fstream>
+#include <cstring>
+#include <string>
+#include "config.hh"
 #include "ASTheader.hh"
 #include "FDMJAST.hh"
-#include "MinusIntConverter.hh"
-#include "ast2xml.hh"
 #include "xml2ast.hh"
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <string>
+#include "ast2xml.hh"
+// #include "temp.hh"
+// #include "treep.hh"
+#include "namemaps.hh"
+#include "semant.hh"
+// #include "ast2tree.hh"
+// #include "tree2xml.hh"
 
 using namespace std;
-using namespace fdmj;
 using namespace tinyxml2;
 
 #define with_location_info false
@@ -17,79 +22,131 @@ using namespace tinyxml2;
 
 Program *prog();
 
+#define ANSI_GREEN "\033[32m"
+#define ANSI_RED "\033[31m"
+#define ANSI_RESET "\033[0m"
+
+void fmj2ast(const string &file) {
+    string file_fmj = "fmj/" + file + ".fmj";
+    string file_ast = "ast/" + file + ".2.ast";
+
+    try {
+        std::ifstream fmjfile(file_fmj);
+        if (!fmjfile.is_open()) {
+            throw runtime_error("Failed to open source file: " + file_fmj);
+        }
+
+        Program *root = fdmjParser(fmjfile, false);
+        if (root == nullptr) {
+            throw runtime_error("AST is not valid!");
+        }
+
+        XMLDocument *x = ast2xml(root, nullptr, with_location_info, false);
+        x->SaveFile(file_ast.c_str());
+        if (x->Error()) {
+            throw runtime_error("Failed to save AST to file: " + file_ast);
+        }
+
+        delete root;
+        cout << ANSI_GREEN << "Successfully compiled " << file_fmj << " to " << file_ast << ANSI_RESET << endl;
+    } catch (const exception &e) {
+        cerr << ANSI_RED << "Error in compileFmjToAst: " << e.what() << ANSI_RESET << endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void ast2semant(const string &file) {
+    string file_ast = "ast/" + file + ".2.ast";
+    string file_ast_semant = "semant/" + file + ".2-semant.ast";
+
+    try {
+        XMLDocument x;
+        x.LoadFile(file_ast.c_str());
+        if (x.Error()) {
+            throw runtime_error("Failed to load AST file: " + file_ast);
+        }
+
+        Program *root = xml2ast(x.FirstChildElement());
+        if (root == nullptr) {
+            throw runtime_error("AST from file is not valid!");
+        }
+
+        Name_Maps *name_maps = makeNameMaps(root);
+        AST_Semant_Map *semant_map = semant_analyze(root);
+
+        XMLDocument *x_semant = ast2xml(root, semant_map, with_location_info, true);
+        x_semant->SaveFile(file_ast_semant.c_str());
+        if (x_semant->Error()) {
+            throw runtime_error("Failed to save semantic AST to file: " + file_ast_semant);
+        }
+
+        delete root;
+        cout << ANSI_GREEN << "Successfully compiled " << file_ast << " to " << file_ast_semant << ANSI_RESET << endl;
+    } catch (const exception &e) {
+        cerr << ANSI_RED << "Error in compileAstToSemant: " << e.what() << ANSI_RESET << endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+// void ast2ir(const string &file) {
+//     try {
+//         string file_ast = file + ".2-semant.ast";
+//         string file_ir = file + ".3.irp";
+
+//         cout << "------Reading AST from : " << file_ast << "------------" << endl;
+//         AST_Semant_Map *semant_map = new AST_Semant_Map();
+//         fdmj::Program *root = xml2ast(file_ast, &semant_map);
+//         if (root == nullptr) {
+//             cerr << "Error reading AST from: " << file_ast << endl;
+//             return;
+//         }
+
+//         cout << "------Converting AST to IR------" << endl;
+//         tree::Program *ir_tree = ast2tree(root, semant_map);
+
+//         cout << "------Converting Tree to IR------" << endl;
+//         IRProgram *ir_program = tree2ir(ir_tree);
+//         if (ir_program == nullptr) {
+//             cerr << "Error converting Tree to IR" << endl;
+//             return;
+//         }
+
+//         cout << "------Saving IR to: " << file_ir << "------------" << endl;
+//         ofstream ir_file(file_ir);
+//         if (!ir_file.is_open()) {
+//             cerr << "Error opening file for writing: " << file_ir << endl;
+//             return;
+//         }
+//         ir_program->print(ir_file);  // 假设 IRProgram 类有 print 方法
+//         ir_file.close();
+
+//         cout << "-----Done---" << endl;
+//     } catch (const exception &e) {
+//         cerr << "Error: " << e.what() << endl;
+//     } catch (...) {
+//         cerr << "Unknown error occurred" << endl;
+//     }
+// }
+
 int main(int argc, const char *argv[]) {
-  string file;
+    if (argc < 2) {
+        cerr << "Usage: " << argv[0] << " <command> [filename]" << endl;
+        return EXIT_FAILURE;
+    }
 
-  const bool debug = argc > 1 && std::strcmp(argv[1], "--debug") == 0;
+    string command = argv[1];
+    string file = argc > 2 ? argv[2] : "";
 
-  if ((!debug && argc != 2) || (debug && argc != 3)) {
-    cerr << "Usage: " << argv[0] << " [--debug] filename" << endl;
-    return EXIT_FAILURE;
-  }
-  file = argv[argc - 1];
+    if (command == "fmj2ast") {
+        fmj2ast(file);
+    } else if (command == "ast2semant") {
+        ast2semant(file);
+    // } else if (command == "ast2ir") {
+    //     ast2ir(file);
+    } else {
+        cerr << "Unknown command: " << command << endl;
+        return EXIT_FAILURE;
+    }
 
-  // boilerplate output filenames (used throutghout the compiler pipeline)
-  string file_fmj = file + ".fmj"; // input source file
-  string file_out = file + ".out";
-  string file_src = file + ".src";
-  string file_src2 = file + ".1.debug.src"; // debug source file
-  string file_ast = file + ".2.ast";        // ast in xml
-  string file_ast2 = file + ".2-debug.ast";
-  string file_ast3 = file + ".2-debug3.ast";
-  string file_ast4 = file + ".2-debug4.ast";
-  string file_irp = file + ".3.irp";
-  string file_stm = file + ".4.stm";
-  string file_liv = file + ".5.liv";
-
-  cout << "------Parsing fmj source file: " << file_fmj << "------------"
-       << endl;
-  std::ifstream fmjfile(file_fmj);
-  Program *root =
-      fdmjParser(fmjfile, false); // false means no debug info from parser
-  if (root == nullptr) {
-    std::cout << "AST is not valid!" << endl;
-    return EXIT_FAILURE;
-  }
-  cout << "Convert AST  to XML..." << endl;
-  XMLDocument *x = ast2xml(root, with_location_info);
-  delete root;
-  if (x->Error()) {
-    std::cout << "AST is not valid!" << endl;
-    return EXIT_FAILURE;
-  }
-  // std::cout << "AST is valid!" << endl;
-  cout << "Saving AST (XML) to: " << file_ast << endl;
-  x->SaveFile(file_ast.c_str());
-  cout << "Loading AST (XML) from: " << file_ast << endl;
-  delete x;
-  x = new XMLDocument();
-  x->LoadFile(file_ast.c_str());
-  Program *root2 = xml2ast(x->RootElement());
-  if (root2 == nullptr) {
-    std::cout << "AST is not valid!" << endl;
-    return EXIT_FAILURE;
-  }
-  XMLDocument *y = ast2xml(root2, with_location_info);
-  delete root2;
-  cout << "Saving AST (XML) to: " << file_ast2 << endl;
-  y->SaveFile(file_ast2.c_str());
-  cout << "Loading AST (XML) from: " << file_ast2 << endl;
-  XMLDocument *z = new XMLDocument();
-  z->LoadFile(file_ast2.c_str());
-  root2 = xml2ast(z->RootElement());
-  cout << "Clone it ..." << endl;
-  Program *root3 = root2->clone();
-  delete root2;
-  cout << "Convert cloned AST to XML..." << endl;
-  XMLDocument *w = ast2xml(root3, with_location_info);
-  cout << "Saving cloned AST (XML) to: " << file_ast3 << endl;
-  w->SaveFile(file_ast3.c_str());
-  cout << "Rewriting AST..." << endl;
-  Program *root4 = minusIntRewrite(root3);
-  cout << "Convert rewrote AST to XML..." << endl;
-  w = ast2xml(root4, with_location_info);
-  cout << "Saving AST (XML) to: " << file_ast4 << endl;
-  w->SaveFile(file_ast4.c_str());
-  cout << "-----Done---" << endl;
-  return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
