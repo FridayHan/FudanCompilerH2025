@@ -1102,7 +1102,8 @@ tree::Eseq *createArrayBinaryOp(tree::Exp *leftArr, tree::Exp *rightArr,
   return new tree::Eseq(tree::Type::PTR, seq, resArr);
 }
 
-static tree::TempExp *allocateArray(tree::Exp *lengthExpr, Temp_map *temp_map) {
+static tree::TempExp *allocateArray(tree::Exp *lengthExpr, Temp_map *temp_map,
+                                    vector<tree::Stm *> *stmts) {
   auto *count =
       new tree::Binop(tree::Type::INT, "+", lengthExpr, new tree::Const(1));
   auto *bytes =
@@ -1111,10 +1112,10 @@ static tree::TempExp *allocateArray(tree::Exp *lengthExpr, Temp_map *temp_map) {
   auto *call = new tree::ExtCall(tree::Type::PTR, "malloc",
                                  new vector<tree::Exp *>{bytes});
   auto *array = new tree::TempExp(tree::Type::PTR, temp_map->newtemp());
-  auto *stmts = new vector<tree::Stm *>{
-      new tree::Move(array, call),
-      new tree::Move(new tree::Mem(tree::Type::PTR, array), lengthExpr)};
-  return new tree::TempExp(tree::Type::PTR, array->temp);
+  stmts->push_back(new tree::Move(array, call));
+  stmts->push_back(
+      new tree::Move(new tree::Mem(tree::Type::INT, array), lengthExpr));
+  return array;
 }
 
 static void appendArrayLoop(vector<tree::Stm *> *stmts, tree::Exp *src,
@@ -1156,7 +1157,7 @@ tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType,
   auto *fetchLen = new tree::Mem(tree::Type::INT, srcArray);
   auto *seqStmts = new vector<tree::Stm *>{new tree::Move(lenTmp, fetchLen)};
 
-  auto *newArr = allocateArray(lenTmp, temp_map);
+  auto *newArr = allocateArray(lenTmp, temp_map, seqStmts);
   appendArrayLoop(seqStmts, srcArray, newArr, opType, temp_map);
 
   auto *seq = new tree::Seq(seqStmts);
