@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <functional>
 
 using namespace std;
 
@@ -140,20 +141,20 @@ Method_var_table *generate_method_var_table(const string &cls,
     table->add_var("_^this^_", TypeKind::CLASS);
   }
 
-  auto *formals = nameMaps->get_method_formal_list(cls, method);
-  if (formals) {
-    for (const auto &param : *formals) {
-      if (auto *formal = nameMaps->get_method_formal(cls, method, param)) {
-        table->add_var(param, formal->type->typeKind);
-      }
-    }
-  }
-
   auto *locals = nameMaps->get_method_var_list(cls, method);
   if (locals) {
     for (const auto &var : *locals) {
       if (auto *decl = nameMaps->get_method_var(cls, method, var)) {
         table->add_var(var, decl->type->typeKind);
+      }
+    }
+  }
+
+  auto *formals = nameMaps->get_method_formal_list(cls, method);
+  if (formals) {
+    for (const auto &param : *formals) {
+      if (auto *formal = nameMaps->get_method_formal(cls, method, param)) {
+        table->add_var(param, formal->type->typeKind);
       }
     }
   }
@@ -189,8 +190,8 @@ void ASTToTreeVisitor::visit(fdmj::MainMethod *node) {
   string fullMethodName = methodVarTable->cname + "^" + methodVarTable->mname;
 
   vector<tree::Temp *> *paramList = nullptr;
-  tree::Label *entryLabel = tempMap->newlabel();
   vector<tree::Label *> *exitLabels = nullptr;
+  tree::Label *entryLabel = nullptr;
 
   vector<tree::Block *> *methodBody =
       generate_mainmethod_body(node, entryLabel);
@@ -238,8 +239,8 @@ void ASTToTreeVisitor::visit(fdmj::MethodDecl *node) {
   vector<tree::Temp *> *paramTempList =
       generate_param_list(className, methodName);
 
-  tree::Label *entryLabel = tempMap->newlabel();
   vector<tree::Label *> *exitLabels = nullptr;
+  tree::Label *entryLabel = nullptr;
 
   vector<tree::Block *> *methodBlocks =
       generate_method_body(node, entryLabel, exitLabels);
@@ -816,8 +817,8 @@ void ASTToTreeVisitor::translateClassMethods(
 
 vector<tree::Block *> *
 ASTToTreeVisitor::generate_mainmethod_body(fdmj::MainMethod *node,
-                                           tree::Label *entryLabel) {
-  vector<tree::Stm *> *stmts = generate_local_var_decls(entryLabel);
+                                           tree::Label *&entryLabel) {
+  vector<tree::Stm *> *stmts = generate_local_var_decls();
 
   vector<tree::Stm *> *bodyStmts =
       visitList<fdmj::Stm, tree::Stm>(*this, node->sl);
@@ -825,15 +826,17 @@ ASTToTreeVisitor::generate_mainmethod_body(fdmj::MainMethod *node,
     stmts->insert(stmts->end(), bodyStmts->begin(), bodyStmts->end());
   }
 
+  entryLabel = tempMap->newlabel();
+  stmts->insert(stmts->begin(), new tree::LabelStm(entryLabel));
+
   vector<tree::Block *> *blocks = new vector<tree::Block *>();
   blocks->push_back(new tree::Block(entryLabel, nullptr, stmts));
   return blocks;
 }
 
 vector<tree::Stm *> *
-ASTToTreeVisitor::generate_local_var_decls(tree::Label *entryLabel) {
+ASTToTreeVisitor::generate_local_var_decls() {
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
-  stmts->push_back(new tree::LabelStm(entryLabel));
 
   Name_Maps *nameMaps = semantMap->getNameMaps();
   string cls = methodVarTable->cname;
@@ -977,14 +980,17 @@ ASTToTreeVisitor::generate_param_list(const string &className,
 
 vector<tree::Block *> *
 ASTToTreeVisitor::generate_method_body(fdmj::MethodDecl *node,
-                                       tree::Label *entryLabel,
+                                       tree::Label *&entryLabel,
                                        vector<tree::Label *> *exitLabels) {
-  vector<tree::Stm *> *stmts = generate_local_var_decls(entryLabel);
+  vector<tree::Stm *> *stmts = generate_local_var_decls();
   vector<tree::Stm *> *body = visitList<fdmj::Stm, tree::Stm>(*this, node->sl);
 
   if (body && !body->empty()) {
     stmts->insert(stmts->end(), body->begin(), body->end());
   }
+
+  entryLabel = tempMap->newlabel();
+  stmts->insert(stmts->begin(), new tree::LabelStm(entryLabel));
 
   vector<tree::Block *> *blocks = new vector<tree::Block *>();
   blocks->push_back(new tree::Block(entryLabel, exitLabels, stmts));
@@ -1176,8 +1182,8 @@ static tree::Exp *buildBoundCheck(tree::Exp *idx, tree::Exp *arrAddr,
   stmts->push_back(
       new tree::Move(lenTmp, new tree::Mem(tree::Type::INT, arrAddr)));
 
-  auto okLbl = temp_map->newlabel();
   auto errLbl = temp_map->newlabel();
+  auto okLbl = temp_map->newlabel();
   stmts->push_back(new tree::Cjump(">=", idx, lenTmp, errLbl, okLbl));
 
   stmts->push_back(new tree::LabelStm(errLbl));

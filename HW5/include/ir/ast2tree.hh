@@ -221,8 +221,8 @@ public:
 
   // MainMethod
   vector<tree::Block *> *generate_mainmethod_body(fdmj::MainMethod *node,
-                                                  tree::Label *entryLabel);
-  vector<tree::Stm *> *generate_local_var_decls(tree::Label *entryLabel);
+                                                  tree::Label *&entryLabel);
+  vector<tree::Stm *> *generate_local_var_decls();
 
   // VarDecl
   string get_var_cname(const string &className, const string &varName,
@@ -237,7 +237,7 @@ public:
   vector<tree::Temp *> *generate_param_list(const string &className,
                                             const string &methodName);
   vector<tree::Block *> *
-  generate_method_body(fdmj::MethodDecl *node, tree::Label *entryLabel,
+  generate_method_body(fdmj::MethodDecl *node, tree::Label *&entryLabel,
                        vector<tree::Label *> *exitLabels);
   tree::Type get_return_type(const string &methodName);
 
