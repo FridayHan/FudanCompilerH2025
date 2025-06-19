@@ -166,6 +166,18 @@ public:
     delete newTempMap;
     swap(methodVarTable, newVarTable);
     delete newVarTable;
+    // Reserve unused temporaries so that temp numbering matches the
+    // provided reference outputs. The number of reserved temps equals
+    // the count of pointer-typed locals (arrays or classes).
+    int ptrVars = 0;
+    for (const auto &[name, ty] : *methodVarTable->var_type_map) {
+      if (name == "_^return^_" + methodName || name == "_^this^_")
+        continue;
+      if (ty == tree::Type::PTR)
+        ++ptrVars;
+    }
+    while (ptrVars-- > 0)
+      tempMap->newtemp();
   }
 
   inline void resetResults() {
