@@ -4,6 +4,12 @@
 #include "treep.hh"
 #include "tinyxml2.hh"
 
+// Compatibility flag. When true, Tree2XML will emit the same XML format
+// as used in HW4 (e.g. omit certain type attributes and use
+// <Statements> tags). This flag is set during AST to IR translation based
+// on whether the program uses array or class features.
+extern bool hw4_compat;
+
 using namespace std;
 using namespace tree;
 using namespace tinyxml2;

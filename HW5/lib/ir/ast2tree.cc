@@ -5,6 +5,7 @@
 #include "namemaps.hh"
 #include "temp.hh"
 #include "treep.hh"
+#include "tree2xml.hh"
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -13,6 +14,10 @@
 #include <vector>
 
 using namespace std;
+
+// When true, tree2xml will emit HW4-compatible XML without array/class
+// extensions. Determined based on the input program.
+bool hw4_compat = false;
 
 #ifdef DEBUG
 #define DEBUG_PRINT(msg)                                                       \
@@ -164,6 +169,31 @@ Method_var_table *generate_method_var_table(const string &cls,
 }
 
 tree::Program *ast2tree(fdmj::Program *prog, AST_Semant_Map *semant_map) {
+  // Detect whether the input program uses any array or class features. If not,
+  // we keep the XML output compatible with the HW4 implementation.
+  hw4_compat = true;
+  if (semant_map) {
+    Name_Maps *nm = semant_map->getNameMaps();
+    for (const auto &c : *nm->get_class_list()) {
+      if (c != "_^main^_") {
+        hw4_compat = false;
+        break;
+      }
+    }
+    if (hw4_compat) {
+      auto *vars = nm->get_method_var_list("_^main^_", "main");
+      if (vars) {
+        for (const auto &v : *vars) {
+          auto *decl = nm->get_method_var("_^main^_", "main", v);
+          if (decl && decl->type->typeKind != fdmj::TypeKind::INT) {
+            hw4_compat = false;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   ASTToTreeVisitor visitor(semant_map);
   visitor.visit(prog);
   return dynamic_cast<tree::Program *>(visitor.getTree());
