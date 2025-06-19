@@ -289,22 +289,29 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
   Tr_cx *cond = expResult->unCx(tempMap);
   stmts->push_back(cond->stm);
 
+  node->stm1->accept(*this);
+  auto *thenStm = dynamic_cast<tree::Stm *>(visit_tree_result);
+
+  tree::Stm *elseStm = nullptr;
+  if (node->stm2) {
+    node->stm2->accept(*this);
+    elseStm = dynamic_cast<tree::Stm *>(visit_tree_result);
+  }
+
   Label *thenLabel = tempMap->newlabel();
   Label *elseLabel = tempMap->newlabel();
   Label *endLabel = tempMap->newlabel();
 
   cond->true_list->patch(thenLabel);
+  cond->false_list->patch(elseLabel);
+
   stmts->push_back(new tree::LabelStm(thenLabel));
-  node->stm1->accept(*this);
-  stmts->push_back(dynamic_cast<tree::Stm *>(visit_tree_result));
+  stmts->push_back(thenStm);
   stmts->push_back(new tree::Jump(endLabel));
 
-  cond->false_list->patch(elseLabel);
   stmts->push_back(new tree::LabelStm(elseLabel));
-  if (node->stm2) {
-    node->stm2->accept(*this);
-    stmts->push_back(dynamic_cast<tree::Stm *>(visit_tree_result));
-  }
+  if (elseStm)
+    stmts->push_back(elseStm);
 
   stmts->push_back(new tree::LabelStm(endLabel));
 
@@ -319,18 +326,19 @@ void ASTToTreeVisitor::visit(fdmj::While *node) {
 
   auto *stmts = new vector<tree::Stm *>();
 
+  node->exp->accept(*this);
+  Tr_cx *cond = expResult->unCx(tempMap);
+
   Label *startLabel = tempMap->newlabel();
   Label *bodyLabel = tempMap->newlabel();
   Label *exitLabel = tempMap->newlabel();
   loopLabels.push({startLabel, exitLabel});
 
   stmts->push_back(new tree::LabelStm(startLabel));
-
-  node->exp->accept(*this);
-  Tr_cx *cond = expResult->unCx(tempMap);
   stmts->push_back(cond->stm);
 
   cond->true_list->patch(bodyLabel);
+  cond->false_list->patch(exitLabel);
   stmts->push_back(new tree::LabelStm(bodyLabel));
 
   node->stm->accept(*this);
