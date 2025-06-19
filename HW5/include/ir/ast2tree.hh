@@ -27,15 +27,17 @@ tree::Program *ast2tree(fdmj::Program *prog, AST_Semant_Map *semant_map);
 Class_table *generate_class_table(AST_Semant_Map *semant_map);
 Method_var_table *generate_method_var_table(const string &class_name,
                                             const string &method_name,
-                                            Name_Maps *nm, tree::Temp_map *temp_map);
+                                            Name_Maps *nm,
+                                            tree::Temp_map *temp_map);
 tree::Eseq *createArrayBinaryOp(tree::Exp *leftArr, tree::Exp *rightArr,
                                 const string &op, Temp_map *temp_map);
 tree::Eseq *createArrayUnaryOp(tree::Exp *arrayExp, const string &op,
                                Temp_map *temp_map);
-tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType, Temp_map *temp_map);
+tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType,
+                       Temp_map *temp_map);
 static tree::Exp *materializeIfNeeded(tree::Exp *expr, bool &needsWrap,
-                                      vector<tree::Stm *> *stmts, Temp_map *temp_map,
-                                      tree::Type ty);
+                                      vector<tree::Stm *> *stmts,
+                                      Temp_map *temp_map, tree::Type ty);
 static tree::Exp *buildBoundCheck(tree::Exp *idx, tree::Exp *arrAddr,
                                   Temp_map *temp_map);
 
@@ -166,6 +168,35 @@ public:
     delete newTempMap;
     swap(methodVarTable, newVarTable);
     delete newVarTable;
+    // Reserve temporaries for pointer-typed locals and formals (except "this")
+    // so temp numbering stays consistent with the reference outputs.
+    int ptrVars = 0;
+    auto *nameMaps = semantMap->getNameMaps();
+    if (auto *locals = nameMaps->get_method_var_list(className, methodName)) {
+      for (const auto &name : *locals) {
+        if (auto *decl =
+                nameMaps->get_method_var(className, methodName, name)) {
+          if (decl->type->typeKind == fdmj::TypeKind::ARRAY ||
+              decl->type->typeKind == fdmj::TypeKind::CLASS)
+            ++ptrVars;
+        }
+      }
+    }
+    if (auto *formals =
+            nameMaps->get_method_formal_list(className, methodName)) {
+      for (const auto &name : *formals) {
+        if (name == "_^this^_")
+          continue;
+        if (auto *formal =
+                nameMaps->get_method_formal(className, methodName, name)) {
+          if (formal->type->typeKind == fdmj::TypeKind::ARRAY ||
+              formal->type->typeKind == fdmj::TypeKind::CLASS)
+            ++ptrVars;
+        }
+      }
+    }
+    while (ptrVars-- > 0)
+      tempMap->newtemp();
   }
 
   inline void resetResults() {
@@ -216,7 +247,7 @@ public:
 
   // Program
   void translateClassMethods(fdmj::Program *node,
-                               vector<tree::FuncDecl *> *functionDeclList);
+                             vector<tree::FuncDecl *> *functionDeclList);
   tree::FuncDecl *translateMainMethod(fdmj::Program *node);
 
   // MainMethod
