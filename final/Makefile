@@ -44,13 +44,13 @@ rebuild: veryclean build
 run: $(MAIN_EXE)
 	$(MAKE) fmj2ast
 	$(MAKE) ast2semant
-	# $(MAKE) ast2ir
+	$(MAKE) ast2ir
 	@printf "\n$(COLOR_GREEN)All tasks completed successfully!$(COLOR_RESET)\n"
 
 run-one: $(MAIN_EXE)
 	$(MAKE) fmj2ast-one
 	$(MAKE) ast2semant-one
-	# $(MAKE) ast2ir-one
+	$(MAKE) ast2ir-one
 
 
 # 编译相关规则
@@ -96,17 +96,17 @@ ast2semant: $(MAIN_EXE)
 	done; \
 	printf "\033[2K$(COLOR_GREEN)AST to Semant Compilation Completed Successfully!$(COLOR_RESET)\n"
 
-# ast2ir: $(MAIN_EXE)
-# 	@cd $(TEST_DIR) && \
-# 	total=$$(ls semant/*.ast | wc -l); \
-# 	count=0; \
-# 	for file in $$(ls semant/*.ast); do \
-# 		count=$$((count + 1)); \
-# 		printf "\033[2K$(COLOR_BLUE)Compiling AST to IR: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
-# 		filename=$$(basename $$file | cut -d. -f1); \
-# 		$(MAKE) -C $(CURDIR) ast2ir-one FILE=$$filename $(REDIRECT); \
-# 	done; \
-# 	printf "\033[2K$(COLOR_GREEN)AST to IR Compilation Completed Successfully!$(COLOR_RESET)\n"
+ast2ir: $(MAIN_EXE)
+	@cd $(TEST_DIR) && \
+	total=$$(ls semant/*.ast | wc -l); \
+	count=0; \
+	for file in $$(ls semant/*.ast); do \
+		count=$$((count + 1)); \
+		printf "\033[2K$(COLOR_BLUE)Compiling AST to IR: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
+		filename=$$(basename $$file | cut -d. -f1); \
+		$(MAKE) -C $(CURDIR) ast2ir-one FILE=$$filename $(REDIRECT); \
+	done; \
+	printf "\033[2K$(COLOR_GREEN)AST to IR Compilation Completed Successfully!$(COLOR_RESET)\n"
 
 
 # 提交相关规则

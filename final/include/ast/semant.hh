@@ -58,6 +58,10 @@ public:
     ~AST_Semant_Map() {
         semant_map.clear();
     }
+
+    void setNameMaps(Name_Maps* nm) { name_maps = nm; }
+    Name_Maps* getNameMaps() { return name_maps; }
+
     AST_Semant* getSemant(AST *node) {
         if (node == nullptr) {
             return nullptr;

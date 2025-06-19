@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "namemaps.hh"
 #include "semant.hh"
+#include "debug.hh"
 
 using namespace std;
 using namespace fdmj;
@@ -99,8 +100,8 @@ void AST_Semant_Visitor::visit(ClassDecl* node) {
                 VarDecl* parent_var = nullptr;
                 string parent_class = "";
 
-                set<string> ancestors = name_maps->get_ancestors(class_name);
-                for (const auto& anc : ancestors) {
+                auto ancestors = name_maps->get_ancestors(class_name);
+                for (const auto& anc : *ancestors) {
                     if (name_maps->is_class_var(anc, var_name)) {
                         parent_var = name_maps->get_class_var(anc, var_name);
                         parent_class = anc;
@@ -289,7 +290,7 @@ void AST_Semant_Visitor::visit(Formal* node) {
     }
     
     if (!current_class.empty() && !current_method.empty()) {
-        vector<string> param_list = name_maps->get_method_formal_list_names(current_class, current_method);
+        vector<string> param_list = name_maps->get_method_formal_list(current_class, current_method);
         
         int count = 0;
         for (auto p : param_list) {
@@ -347,7 +348,7 @@ void AST_Semant_Visitor::visit(Assign* node) {
             auto rhs_class = get<string>(rhs_semant->get_type_par());
             if (lhs_class != rhs_class) {
                 auto ancestors = name_maps->get_ancestors(rhs_class);
-                if (ancestors.find(lhs_class) == ancestors.end()) {
+                if (std::find(ancestors->begin(), ancestors->end(), lhs_class) == ancestors->end()) {
                     cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                          << ": Incompatible class types in assignment - cannot assign " 
                          << rhs_class << " to " << lhs_class << endl;
@@ -627,7 +628,7 @@ void AST_Semant_Visitor::visit(Return* node) {
                 
                 if (return_class != method_class) {
                     auto ancestors = name_maps->get_ancestors(return_class);
-                    if (ancestors.find(method_class) == ancestors.end()) {
+                    if (std::find(ancestors->begin(), ancestors->end(), method_class) == ancestors->end()) {
                         cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
                              << ": Return class type '" << return_class 
                              << "' is not compatible with method return class type '" << method_class << "'" << endl;
@@ -824,7 +825,7 @@ void AST_Semant_Visitor::visit(CallExp* node) {
             type_par = method_type->arity->val;
         }
         
-        vector<string> formal_names = name_maps->get_method_formal_list_names(class_name, method_name);
+        vector<string> formal_names = name_maps->get_method_formal_list(class_name, method_name);
         
         int expected_params = formal_names.empty() ? 0 : formal_names.size() - 1;
         
@@ -1040,8 +1041,8 @@ VarDecl* AST_Semant_Visitor::find_var_in_class_hierarchy(const string& class_nam
         return name_maps->get_class_var(class_name, var_name);
     }
     
-    set<string> ancestors = name_maps->get_ancestors(class_name);
-    for (auto ancestor : ancestors) {
+    auto ancestors = name_maps->get_ancestors(class_name);
+    for (auto ancestor : *ancestors) {
         if (name_maps->is_class_var(ancestor, var_name)) {
             return name_maps->get_class_var(ancestor, var_name);
         }
@@ -1123,8 +1124,8 @@ void AST_Semant_Visitor::visit(IdExp* node) {
         }
         // 父类的成员变量
         else {
-            set<string> ancestors = name_maps->get_ancestors(current_class);
-            for (const auto& ancestor : ancestors) {
+            auto ancestors = name_maps->get_ancestors(current_class);
+            for (const auto& ancestor : *ancestors) {
                 if (name_maps->is_class_var(ancestor, node->id)) {
                     VarDecl* var_decl = name_maps->get_class_var(ancestor, node->id);
                     if (var_decl && var_decl->type) {
@@ -1164,8 +1165,8 @@ void AST_Semant_Visitor::visit(IdExp* node) {
         
         // 5. 方法名（父类的方法）
         if (!found) {
-            set<string> ancestors = name_maps->get_ancestors(current_class);
-            for (const auto& ancestor : ancestors) {
+            auto ancestors = name_maps->get_ancestors(current_class);
+            for (const auto& ancestor : *ancestors) {
                 if (name_maps->is_method(ancestor, node->id)) {
                     s_kind = AST_Semant::Kind::MethodName;
                     Type* method_type = name_maps->get_method_type(ancestor, node->id);

@@ -1,14 +1,15 @@
 #define DEBUG
 #undef DEBUG
 
-#include "ASTheader.hh"
-#include "FDMJAST.hh"
-#include "namemaps.hh"
 #include <algorithm>
 #include <iostream>
 #include <map>
 #include <variant>
 #include <vector>
+#include "ASTheader.hh"
+#include "FDMJAST.hh"
+#include "namemaps.hh"
+#include "debug.hh"
 
 using namespace std;
 using namespace fdmj;
@@ -142,7 +143,7 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
           name_maps->add_method(class_name, method_name);
           
           // 使用新方法获取形参列表
-          vector<string> param_list = name_maps->get_method_formal_list_names(parent_name, method_name);
+          vector<string> param_list = name_maps->get_method_formal_list(parent_name, method_name);
           if (!param_list.empty()) {
             name_maps->add_method_formal_list(class_name, method_name, param_list);
             

@@ -7,12 +7,12 @@
 #include "FDMJAST.hh"
 #include "xml2ast.hh"
 #include "ast2xml.hh"
-// #include "temp.hh"
-// #include "treep.hh"
+#include "temp.hh"
+#include "treep.hh"
 #include "namemaps.hh"
 #include "semant.hh"
-// #include "ast2tree.hh"
-// #include "tree2xml.hh"
+#include "ast2tree.hh"
+#include "tree2xml.hh"
 
 using namespace std;
 using namespace tinyxml2;
@@ -20,7 +20,7 @@ using namespace tinyxml2;
 #define with_location_info false
 // false means no location info in the AST XML files
 
-Program *prog();
+fdmj::Program *prog();
 
 #define ANSI_GREEN "\033[32m"
 #define ANSI_RED "\033[31m"
@@ -36,7 +36,7 @@ void fmj2ast(const string &file) {
             throw runtime_error("Failed to open source file: " + file_fmj);
         }
 
-        Program *root = fdmjParser(fmjfile, false);
+        fdmj::Program *root = fdmjParser(fmjfile, false);
         if (root == nullptr) {
             throw runtime_error("AST is not valid!");
         }
@@ -66,7 +66,7 @@ void ast2semant(const string &file) {
             throw runtime_error("Failed to load AST file: " + file_ast);
         }
 
-        Program *root = xml2ast(x.FirstChildElement());
+        fdmj::Program *root = xml2ast(x.FirstChildElement());
         if (root == nullptr) {
             throw runtime_error("AST from file is not valid!");
         }
@@ -88,45 +88,38 @@ void ast2semant(const string &file) {
     }
 }
 
-// void ast2ir(const string &file) {
-//     try {
-//         string file_ast = file + ".2-semant.ast";
-//         string file_ir = file + ".3.irp";
+void ast2ir(const string &file) {
+    try {
+        string file_ast = "semant/" + file + ".2-semant.ast";
+        string file_ir = "ir/" + file + ".3.irp";
 
-//         cout << "------Reading AST from : " << file_ast << "------------" << endl;
-//         AST_Semant_Map *semant_map = new AST_Semant_Map();
-//         fdmj::Program *root = xml2ast(file_ast, &semant_map);
-//         if (root == nullptr) {
-//             cerr << "Error reading AST from: " << file_ast << endl;
-//             return;
-//         }
+        cout << "------Reading AST from : " << file_ast << "------------" << endl;
+        AST_Semant_Map *semant_map = new AST_Semant_Map();
+        fdmj::Program *root = xml2ast(file_ast, &semant_map);
+        if (root == nullptr) {
+            cerr << "Error reading AST from: " << file_ast << endl;
+            return;
+        }
+        
+        semant_map->getNameMaps()->print();
+        cout << "------Converting AST to IR------" << endl;
+        Compiler_Config::print_config();
+        tree::Program *ir = ast2tree(root, semant_map);
 
-//         cout << "------Converting AST to IR------" << endl;
-//         tree::Program *ir_tree = ast2tree(root, semant_map);
+        cout << "------Saving IR (XML) to: " << file_ir << "------------" << endl;
+        XMLDocument *x = tree2xml(ir);
+        x->SaveFile(file_ir.c_str());
+        if (x->Error()) {
+            throw runtime_error("Failed to save IR to file: " + file_ir);
+        }
 
-//         cout << "------Converting Tree to IR------" << endl;
-//         IRProgram *ir_program = tree2ir(ir_tree);
-//         if (ir_program == nullptr) {
-//             cerr << "Error converting Tree to IR" << endl;
-//             return;
-//         }
-
-//         cout << "------Saving IR to: " << file_ir << "------------" << endl;
-//         ofstream ir_file(file_ir);
-//         if (!ir_file.is_open()) {
-//             cerr << "Error opening file for writing: " << file_ir << endl;
-//             return;
-//         }
-//         ir_program->print(ir_file);  // 假设 IRProgram 类有 print 方法
-//         ir_file.close();
-
-//         cout << "-----Done---" << endl;
-//     } catch (const exception &e) {
-//         cerr << "Error: " << e.what() << endl;
-//     } catch (...) {
-//         cerr << "Unknown error occurred" << endl;
-//     }
-// }
+        cout << "-----Done---" << endl;
+    } catch (const exception &e) {
+        cerr << ANSI_RED << "Error in ast2ir: " << e.what() << ANSI_RESET << endl;
+    } catch (...) {
+        cerr << ANSI_RED << "Unknown error occurred in ast2ir" << ANSI_RESET << endl;
+    }
+}
 
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
@@ -141,8 +134,8 @@ int main(int argc, const char *argv[]) {
         fmj2ast(file);
     } else if (command == "ast2semant") {
         ast2semant(file);
-    // } else if (command == "ast2ir") {
-    //     ast2ir(file);
+    } else if (command == "ast2ir") {
+        ast2ir(file);
     } else {
         cerr << "Unknown command: " << command << endl;
         return EXIT_FAILURE;

@@ -1,18 +1,3 @@
-#include <iostream>
-
-#ifdef DEBUG
-#define DEBUG_PRINT(msg) do { std::cerr << msg << std::endl; } while (0)
-#define DEBUG_PRINT2(msg, val) do { std::cerr << msg << " " << val << std::endl; } while (0)
-#else
-#define DEBUG_PRINT(msg) do { } while (0)
-#define DEBUG_PRINT2(msg, val) do { } while (0)
-#endif
-
-#define CHECK_NULLPTR(node) if (!node) { \
-    std::cerr << "Error: Null pointer at " << __FILE__ << ":" << __LINE__ << std::endl; \
-    return; \
-}
-
 #ifndef __AST_NAMEMAPS_HH__
 #define __AST_NAMEMAPS_HH__
 
@@ -39,27 +24,37 @@ private:
     map<pair<string, string>, Type*> methodType; // 存储方法返回类型
 
 public:
+    bool passed_name_maps = true; //to report if there is any error in setting up the name maps
+
     bool is_class(string class_name);
     bool add_class(string class_name); //return false if already exists
+    set<string>* get_class_list();
+
+    bool detected_loop(map<string, string> classHierachy);
     bool add_class_hiearchy(string class_name, string parent_name); //return false if loop found
-    set<string> get_ancestors(string class_name);
+    vector<string>* get_ancestors(string class_name);
+
     bool is_method(string class_name, string method_name); 
     bool add_method(string class_name, string method_name);  //return false if already exists
-    //MethodDecl* get_method(string method_name, string class_name);
+    set<string>* get_method_list(string class_name);
+
     bool is_class_var(string class_name, string var_name);
     bool add_class_var(string class_name, string var_name, VarDecl* vd);
     VarDecl* get_class_var(string class_name, string var_name);
+    set<string>* get_class_var_list(string class_name);
+
     bool is_method_var(string class_name, string method_name, string var_name);
     bool add_method_var(string class_name, string method_name, string var_name, VarDecl* vd);
     VarDecl* get_method_var(string class_name, string method_name, string var_name);
+    set<string>* get_method_var_list(string class_name, string method_name);
+
     bool is_method_formal(string class_name, string method_name, string var_name);
     bool add_method_formal(string class_name, string method_name, string var_name, Formal* f);
     Formal* get_method_formal(string class_name, string method_name, string var_name);
     bool add_method_formal_list(string class_name, string method_name, vector<string> vl);
-    vector<Formal*>* get_method_formal_list(string class_name, string method_name);
     bool add_method_type(string class_name, string method_name, Type* type);
     Type* get_method_type(string class_name, string method_name);
-    vector<string> get_method_formal_list_names(string class_name, string method_name);
+    vector<string> get_method_formal_list(string class_name, string method_name);
 
     // 获取所有类名
     set<string> get_all_classes() { return classes; }
