@@ -109,6 +109,10 @@ static void placePhi(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
             }
         }
 
+        if (definitionBlocks.size() <= 1) {
+            continue;
+        }
+
         set<int> phiBlocks;
         set<int> worklist(definitionBlocks.begin(), definitionBlocks.end());
 
@@ -315,15 +319,6 @@ static void renameInBlock(int blockNum, QuadFuncDecl* func, ControlFlowInfo* dom
                 }
             }
             delete stmt->use;
-            
-            std::sort(useVec.begin(), useVec.end(), [](Temp* a, Temp* b) { return a->num > b->num; });
-            
-            if (stmt->kind == QuadKind::CJUMP && useVec.size() == 2) {
-                if (useVec[0]->num == 10700 && useVec[1]->num == 10601) {
-                    std::swap(useVec[0], useVec[1]);
-                }
-            }
-            
             stmt->use = new set<Temp*>(useVec.begin(), useVec.end());
         }
         
@@ -424,6 +419,9 @@ static void renameInBlock(int blockNum, QuadFuncDecl* func, ControlFlowInfo* dom
                         updateQuadTermTemp(arg, currentVersion, tempTypes);
                     }
                 }
+                if (moveCall->call->obj_term) {
+                    updateQuadTermTemp(moveCall->call->obj_term, currentVersion, tempTypes);
+                }
                 
                 TempExp* dstTempExp = moveCall->dst;
                 Temp* dstTemp = dstTempExp->temp;
@@ -442,6 +440,9 @@ static void renameInBlock(int blockNum, QuadFuncDecl* func, ControlFlowInfo* dom
             }
             case QuadKind::CALL: {
                 QuadCall* call = static_cast<QuadCall*>(stmt);
+                if (call->obj_term) {
+                    updateQuadTermTemp(call->obj_term, currentVersion, tempTypes);
+                }
                 for (size_t i = 0; i < call->args->size(); ++i) {
                     updateQuadTermTemp(call->args->at(i), currentVersion, tempTypes);
                 }
@@ -535,7 +536,6 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                     CHECK_NULLPTR(arg_pair.first);
                     newUseVec.push_back(arg_pair.first);
                 }
-                std::sort(newUseVec.begin(), newUseVec.end(), [](Temp* a, Temp* b) { return a->num > b->num; });
                 delete phi->use;
                 phi->use = new set<Temp*>(newUseVec.begin(), newUseVec.end());
             }
