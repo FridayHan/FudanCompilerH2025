@@ -69,6 +69,8 @@ public:
     void print();
     vector<string> get_class_var_names(string class_name);
     vector<string> get_class_method_names(string class_name);
+    // 获取方法内局部变量名列表
+    vector<string> get_method_var_names(string class_name, string method_name);
     bool inherit_var(string parent_class, string child_class, string var_name);
     bool check_method_signature(string class1, string method1, string class2, string method2);
 

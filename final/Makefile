@@ -7,6 +7,9 @@ TEST_DIR = $(CURDIR)/test
 FMJ_DIR = $(TEST_DIR)/fmj
 AST_DIR = $(TEST_DIR)/ast
 SEMANT_DIR = $(TEST_DIR)/semant
+IR_DIR = $(TEST_DIR)/ir
+QUAD_DIR = $(TEST_DIR)/quad
+SSA_DIR = $(TEST_DIR)/ssa
 MAIN_EXE = $(BUILD_DIR)/tools/main/main
 
 # 可选的 VERBOSE 模式
@@ -28,9 +31,11 @@ build:
 	cd $(BUILD_DIR) && ninja
 
 clean:
-	find $(AST_DIR) $(SEMANT_DIR) -maxdepth 1 -type f \( \
-		-name "*.ast" -o -name "*.out"\
-		\) -exec $(RM) {} \;
+	$(RM) $(AST_DIR)/*
+	$(RM) $(SEMANT_DIR)/*
+	$(RM) $(IR_DIR)/*
+	$(RM) $(QUAD_DIR)/*
+	$(RM) $(SSA_DIR)/*
 
 veryclean: clean 
 	$(RM) $(BUILD_DIR)
@@ -44,17 +49,21 @@ rebuild: veryclean build
 run: $(MAIN_EXE)
 	$(MAKE) fmj2ast
 	$(MAKE) ast2semant
-	$(MAKE) ast2ir
+	$(MAKE) semant2ir
+	$(MAKE) ir2quad
+	$(MAKE) quad2ssa
 	@printf "\n$(COLOR_GREEN)All tasks completed successfully!$(COLOR_RESET)\n"
 
 run-one: $(MAIN_EXE)
 	$(MAKE) fmj2ast-one
 	$(MAKE) ast2semant-one
-	$(MAKE) ast2ir-one
+	$(MAKE) semant2ir-one
+	$(MAKE) ir2quad-one
+	$(MAKE) quad2ssa-one
 
 
 # 编译相关规则
-.PHONY: fmj2ast-one ast2semant-one ast2ir-one fmj2ast ast2semant ast2ir
+.PHONY: fmj2ast-one ast2semant-one semant2ir-one ir2quad-one quad2ssa-one fmj2ast ast2semant semant2ir ir2quad quad2ssa
 
 # 修改为只传递文件名，不包含路径和扩展名
 fmj2ast-one: $(MAIN_EXE)
@@ -67,16 +76,26 @@ ast2semant-one: $(MAIN_EXE)
 	$(MAIN_EXE) "ast2semant" "${FILE}" $(REDIRECT); \
 	cd .. $(REDIRECT)
 
-ast2ir-one: $(MAIN_EXE)
+semant2ir-one: $(MAIN_EXE)
 	cd $(TEST_DIR) && \
-	$(MAIN_EXE) "ast2ir" "${FILE}" $(REDIRECT); \
+	$(MAIN_EXE) "semant2ir" "${FILE}" $(REDIRECT); \
+	cd .. $(REDIRECT)
+
+ir2quad-one: $(MAIN_EXE)
+	cd $(TEST_DIR) && \
+	$(MAIN_EXE) "ir2quad" "${FILE}" $(REDIRECT); \
+	cd .. $(REDIRECT)
+
+quad2ssa-one: $(MAIN_EXE)
+	cd $(TEST_DIR) && \
+	$(MAIN_EXE) "quad2ssa" "${FILE}" $(REDIRECT); \
 	cd .. $(REDIRECT)
 
 fmj2ast: $(MAIN_EXE)
 	@cd $(TEST_DIR) && \
-	total=$$(ls fmj/*.fmj | wc -l); \
+	total=$$(ls $(FMJ_DIR)/*.fmj | wc -l); \
 	count=0; \
-	for file in $$(ls fmj/*.fmj); do \
+	for file in $$(ls $(FMJ_DIR)/*.fmj); do \
 		count=$$((count + 1)); \
 		printf "\033[2K$(COLOR_BLUE)Compiling FMJ to AST: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
 		filename=$$(basename $$file | cut -d. -f1); \
@@ -86,9 +105,9 @@ fmj2ast: $(MAIN_EXE)
 
 ast2semant: $(MAIN_EXE)
 	@cd $(TEST_DIR) && \
-	total=$$(ls ast/*.ast | wc -l); \
+	total=$$(ls $(AST_DIR)/*.ast | wc -l); \
 	count=0; \
-	for file in $$(ls ast/*.ast); do \
+	for file in $$(ls $(AST_DIR)/*.ast); do \
 		count=$$((count + 1)); \
 		printf "\033[2K$(COLOR_YELLOW)Compiling AST to Semant: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
 		filename=$$(basename $$file | cut -d. -f1); \
@@ -96,17 +115,41 @@ ast2semant: $(MAIN_EXE)
 	done; \
 	printf "\033[2K$(COLOR_GREEN)AST to Semant Compilation Completed Successfully!$(COLOR_RESET)\n"
 
-ast2ir: $(MAIN_EXE)
+semant2ir: $(MAIN_EXE)
 	@cd $(TEST_DIR) && \
-	total=$$(ls semant/*.ast | wc -l); \
+	total=$$(ls $(SEMANT_DIR)/*.ast | wc -l); \
 	count=0; \
-	for file in $$(ls semant/*.ast); do \
+	for file in $$(ls $(SEMANT_DIR)/*.ast); do \
 		count=$$((count + 1)); \
 		printf "\033[2K$(COLOR_BLUE)Compiling AST to IR: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
 		filename=$$(basename $$file | cut -d. -f1); \
-		$(MAKE) -C $(CURDIR) ast2ir-one FILE=$$filename $(REDIRECT); \
+		$(MAKE) -C $(CURDIR) semant2ir-one FILE=$$filename $(REDIRECT); \
 	done; \
 	printf "\033[2K$(COLOR_GREEN)AST to IR Compilation Completed Successfully!$(COLOR_RESET)\n"
+
+ir2quad: $(MAIN_EXE)
+	@cd $(TEST_DIR) && \
+	total=$$(ls $(IR_DIR)/*.irp | wc -l); \
+	count=0; \
+	for file in $$(ls $(IR_DIR)/*.irp); do \
+		count=$$((count + 1)); \
+		printf "\033[2K$(COLOR_YELLOW)Compiling IR to Quad: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
+		filename=$$(basename $$file | cut -d. -f1); \
+		$(MAKE) -C $(CURDIR) ir2quad-one FILE=$$filename $(REDIRECT); \
+	done; \
+	printf "\033[2K$(COLOR_GREEN)IR to Quad Compilation Completed Successfully!$(COLOR_RESET)\n"
+
+quad2ssa: $(MAIN_EXE)
+	@cd $(TEST_DIR) && \
+	total=$$(ls $(QUAD_DIR)/*.4-xml.quad | wc -l); \
+	count=0; \
+	for file in $$(ls $(QUAD_DIR)/*.4-xml.quad); do \
+		count=$$((count + 1)); \
+		printf "\033[2K$(COLOR_BLUE)Compiling Quad to SSA: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
+		filename=$$(basename $$file | cut -d. -f1); \
+		$(MAKE) -C $(CURDIR) quad2ssa-one FILE=$$filename $(REDIRECT); \
+	done; \
+	printf "\033[2K$(COLOR_GREEN)Quad to SSA Compilation Completed Successfully!$(COLOR_RESET)\n"
 
 
 # 提交相关规则

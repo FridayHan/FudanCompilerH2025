@@ -42,8 +42,8 @@ void AST_Semant_Visitor::visit(Program* node) {
 void AST_Semant_Visitor::visit(MainMethod* node) {
     DEBUG_PRINT("Visiting MainMethod");
     CHECK_NULLPTR(node);
-    current_class = "MainClass";
-    current_method = "^_main";
+    current_class = "_^main^_";
+    current_method = "main";
     
     Type* main_type = new Type(node->getPos());
     name_maps->add_method_type(current_class, current_method, main_type);
@@ -282,7 +282,7 @@ void AST_Semant_Visitor::visit(Formal* node) {
 
     string param_name = node->id->id;
     
-    if (param_name == "^_method_return") {
+    if (param_name.rfind("_^return^_", 0) == 0) {
         if (node->type) {
             node->type->accept(*this);
         }
@@ -652,9 +652,7 @@ void AST_Semant_Visitor::visit(Return* node) {
              << ": Missing return value for non-void method" << endl;
     }
     
-    // 补充设置 Return 节点自身的语义信息，例如认为其返回 INT 类型（可根据场景调整）
-    AST_Semant* ret_sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>{}, false);
-    semant_map->setSemant(node, ret_sem);
+    // 不为 Return 语句设置单独的语义信息，保持与参考输出一致
 }
 
 void AST_Semant_Visitor::visit(PutInt* node) {
@@ -931,10 +929,10 @@ void AST_Semant_Visitor::visit(This* node) {
     DEBUG_PRINT("Visiting This");
     CHECK_NULLPTR(node);
     
-    if (current_class.empty() || current_class == "MainClass") {
+    if (current_class.empty() || current_class == "_^main^_") {
         cerr << "Error at line " << node->getPos()->sline << ", column " << node->getPos()->scolumn
              << ": 'this' keyword used outside of a class context" << endl;
-        if (current_class == "MainClass") {
+        if (current_class == "_^main^_") {
             cerr << "  'this' cannot be used in the main method" << endl;
         }
     }
@@ -1048,8 +1046,8 @@ VarDecl* AST_Semant_Visitor::find_var_in_class_hierarchy(const string& class_nam
         }
     }
     
-    if (name_maps->is_class_var("MainClass", var_name)) {
-        return name_maps->get_class_var("MainClass", var_name);
+    if (name_maps->is_class_var("_^main^_", var_name)) {
+        return name_maps->get_class_var("_^main^_", var_name);
     }
     return nullptr;
 }
@@ -1199,9 +1197,9 @@ void AST_Semant_Visitor::visit(IdExp* node) {
         DEBUG_PRINT("Found as class name: " << node->id);
     }
     
-    // 7. 最后检查MainClass的变量（全局变量）
-    if (!found && name_maps->is_class_var("MainClass", node->id)) {
-        VarDecl* var_decl = name_maps->get_class_var("MainClass", node->id);
+    // 7. 最后检查_^main^_的变量（全局变量）
+    if (!found && name_maps->is_class_var("_^main^_", node->id)) {
+        VarDecl* var_decl = name_maps->get_class_var("_^main^_", node->id);
         if (var_decl && var_decl->type) {
             type_kind = var_decl->type->typeKind;
             
@@ -1211,7 +1209,7 @@ void AST_Semant_Visitor::visit(IdExp* node) {
                 type_par = var_decl->type->arity->val;
             }
             found = true;
-            DEBUG_PRINT("Found as MainClass variable with type: " << type_kind_string(type_kind));
+            DEBUG_PRINT("Found as _^main^_ variable with type: " << type_kind_string(type_kind));
         }
     }
 

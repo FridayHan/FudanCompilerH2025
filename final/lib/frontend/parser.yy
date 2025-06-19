@@ -15,11 +15,23 @@
   #include "ASTLexer.hh"
   #include "ASTheader.hh"
   #include "FDMJAST.hh"
-  #include "debug.hh"
 
   using namespace std;
   using namespace fdmj;
 }
+
+%{
+#include <iostream>
+#include <string>
+
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) do { cerr << msg << endl; } while (0)
+#define DEBUG_PRINT2(msg, val) do { cerr << msg << " " << val << endl; } while (0)
+#else
+#define DEBUG_PRINT(msg) do { } while (0)
+#define DEBUG_PRINT2(msg, val) do { } while (0)
+#endif
+%}
 
 %define api.namespace {fdmj}
 %define api.parser.class {ASTParser}
@@ -180,7 +192,7 @@ VARDECL: CLASS ID ID ';'
   INT '[' ']' ID '=' '{' CONSTLIST '}' ';'
   {
     DEBUG_PRINT("Array VarDecl with initialization");
-    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7); // TODO: 使用 $7->size() 即可获取初始化 vector 的长度
+    $$ = new VarDecl(p, new Type(p, TypeKind::ARRAY, nullptr, new IntExp(p, 0)), $4, $7);
   }
   |
   INT '[' NUM ']' ID ';'

@@ -300,6 +300,17 @@ vector<string> Name_Maps::get_class_method_names(string class_name) {
     return method_names;
 }
 
+// 获取指定方法的局部变量名列表
+vector<string> Name_Maps::get_method_var_names(string class_name, string method_name) {
+    vector<string> var_names;
+    for (auto it = methodVar.begin(); it != methodVar.end(); ++it) {
+        if (get<0>(it->first) == class_name && get<1>(it->first) == method_name) {
+            var_names.push_back(get<2>(it->first));
+        }
+    }
+    return var_names;
+}
+
 // 继承父类的变量到子类
 bool Name_Maps::inherit_var(string parent_class, string child_class, string var_name) {
     if (!is_class_var(parent_class, var_name)) {
@@ -489,8 +500,8 @@ bool Name_Maps::is_var_accessible(string current_class, string current_method, s
         }
     }
     
-    // 5. 检查MainClass的变量（全局变量）
-    if (is_class_var("MainClass", var_name)) {
+    // 5. 检查_^main^_的变量（全局变量）
+    if (is_class_var("_^main^_", var_name)) {
         return true;
     }
     

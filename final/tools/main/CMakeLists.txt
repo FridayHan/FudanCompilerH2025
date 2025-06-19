@@ -11,6 +11,8 @@ target_link_libraries(${MAIN} PUBLIC
   frontend
   ast
   ir
+  quad
+  quadflow
   util
   vendor_xml
 )

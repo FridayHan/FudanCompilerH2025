@@ -12,37 +12,13 @@
 #include "temp.hh"
 #include "tree2xml.hh"
 #include "treep.hh"
+#include "debug.hh"
 
 using namespace std;
 
 // When true, tree2xml will emit HW4-compatible XML without array/class
 // extensions. Determined based on the input program.
 bool hw4_compat = false;
-
-#ifdef DEBUG
-#define DEBUG_PRINT(msg)                                                       \
-  do {                                                                         \
-    std::cerr << msg << std::endl;                                             \
-  } while (0)
-#define DEBUG_PRINT2(msg, val)                                                 \
-  do {                                                                         \
-    std::cerr << msg << " " << val << std::endl;                               \
-  } while (0)
-#else
-#define DEBUG_PRINT(msg)                                                       \
-  do {                                                                         \
-  } while (0)
-#define DEBUG_PRINT2(msg, val)                                                 \
-  do {                                                                         \
-  } while (0)
-#endif
-
-#define CHECK_NULLPTR(node)                                                    \
-  if (!node) {                                                                 \
-    std::cerr << "Error: Null pointer at " << __FILE__ << ":" << __LINE__      \
-              << std::endl;                                                    \
-    exit(1);                                                                   \
-  }
 
 typedef variant<monostate, string, int> TypePar;
 typedef variant<monostate, fdmj::IntExp *, vector<fdmj::IntExp *> *> VarInit;
