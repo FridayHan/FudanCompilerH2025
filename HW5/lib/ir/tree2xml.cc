@@ -9,6 +9,8 @@
 #include "tinyxml2.hh"
 #include "tree2xml.hh"
 
+extern bool hw4_compat;
+
 using namespace std;
 using namespace tree;
 using namespace tinyxml2;
@@ -103,7 +105,8 @@ void Tree2XML::visit(Block *block) {
             element->SetAttribute(("exit_label_"+to_string(i)).c_str(), label->name());
         }
     }
-    XMLElement* stmsElement = doc->NewElement("Sequence");
+    const char* tag = hw4_compat ? "Statements" : "Sequence";
+    XMLElement* stmsElement = doc->NewElement(tag);
     if (block->sl != nullptr) {
         for (auto stm : *block->sl) {
             stm->accept(*this);
@@ -257,7 +260,8 @@ void Tree2XML::visit(Binop* node) {
     }
     tinyxml2::XMLElement* element = doc->NewElement("BinOp");
     element->SetAttribute("op", node->op.c_str());
-    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
+    if (!hw4_compat)
+        element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     node->left->accept(*this);
     if (visit_result != nullptr) element->InsertEndChild(visit_result);
     node->right->accept(*this);
@@ -270,7 +274,8 @@ void Tree2XML::visit(Mem* node) {
     cout << "Visiting Memory" << endl;
 #endif
     XMLElement* element = doc->NewElement("Memory");
-    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
+    if (!hw4_compat)
+        element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     node->mem->accept(*this);
     if (visit_result != nullptr) element->InsertEndChild(visit_result);
     visit_result = element;
@@ -350,7 +355,8 @@ void Tree2XML::visit(Call* node) {
 #endif
     XMLElement* element = doc->NewElement("Call");
     element->SetAttribute("id", node->id.c_str());
-    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
+    if (!hw4_compat)
+        element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     node->obj->accept(*this);
     if (visit_result != nullptr) element->InsertEndChild(visit_result);
     XMLElement* argsElement = doc->NewElement("Arguments");
@@ -372,7 +378,8 @@ void Tree2XML::visit(ExtCall* node) {
     }
     tinyxml2::XMLElement* element = doc->NewElement("ExtCall");
     element->SetAttribute("extfun", node->extfun.c_str());
-    element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
+    if (!hw4_compat)
+        element->SetAttribute("type", node->type == Type::INT ? "INT" : "PTR");
     tinyxml2::XMLElement* argsElement = doc->NewElement("Arguments");
     for (auto arg : *node->args) {
         arg->accept(*this);
