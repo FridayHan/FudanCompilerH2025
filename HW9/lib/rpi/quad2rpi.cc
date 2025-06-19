@@ -90,6 +90,7 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
     current_funcname = func->funcname;
     string indent_str(indent, ' ');
 
+    result += "\n";
     result += "@ Here's function: " + func->funcname + "\n\n";
 
     string func_label = normalizeName(func->funcname);
@@ -173,11 +174,8 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
                     i++; continue;
                 }
             }
-
             result += convertQuadStm(stmt, color, indent, emitted);
         }
-
-        result += convertQuadStm(stmt, color, indent, emitted);
     }
 
     return result;
@@ -497,7 +495,7 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
     DEBUG_PRINT("[quad2rpi] 开始转换四元式程序到RPI格式");
     DEBUG_PRINT2("[quad2rpi] 函数数量:", quadProgram->quadFuncDeclList->size());
     string result; result.reserve(10000);
-    result = ".section .note.GNU-stack\n\n@ Here is the RPI code\n\n";
+    result = ".section .note.GNU-stack\n\n@ Here is the RPI code\n";
     
     for (QuadFuncDecl* func : *quadProgram->quadFuncDeclList) {
         DEBUG_PRINT2("[quad2rpi] 处理函数:", func->funcname);
@@ -510,6 +508,7 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
         result += convert(func, dfi, c, indent);
     }
     
+    result += "\n";  // 添加空行
     result += ".global malloc\n";
     result +=".global getint\n";
     result += ".global putint\n";
