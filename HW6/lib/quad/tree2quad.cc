@@ -93,6 +93,10 @@ void Tree2Quad::visit(FuncDecl *node) {
   temp_map->next_temp = node->last_temp_num + 1;
   temp_map->next_label = node->last_label_num + 1;
 
+  // reset complexity tracking for this function
+  complex_defs.clear();
+  call_defs.clear();
+
   // Create the QuadFuncDecl first so blocks can reference it
   QuadFuncDecl *func_decl =
       new QuadFuncDecl(node, node->name, params, blocks, node->last_temp_num,
@@ -298,6 +302,7 @@ void Tree2Quad::visit(Move *node) {
       // Create and store the Load quad
       QuadLoad *load_quad = new QuadLoad(node, temp_dst, addr_term, def, use);
       result->push_back(load_quad);
+      complex_defs.insert(temp_dst->temp->name());
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
@@ -338,9 +343,15 @@ void Tree2Quad::visit(Move *node) {
       }
 
       // Create and store the MoveBinop quad
+      bool left_call = left_term->kind == QuadTermKind::TEMP &&
+                       call_defs.count(left_term->get_temp()->temp->name());
+      bool right_call = right_term->kind == QuadTermKind::TEMP &&
+                        call_defs.count(right_term->get_temp()->temp->name());
       QuadMoveBinop *binop_quad = new QuadMoveBinop(
-          node, temp_dst, left_term, binop_src->op, right_term, def, use);
+          node, temp_dst, left_term, binop_src->op, right_term, left_call,
+          right_call, def, use);
       result->push_back(binop_quad);
+      complex_defs.insert(temp_dst->temp->name());
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
@@ -360,11 +371,18 @@ void Tree2Quad::visit(Move *node) {
 
       // Visit arguments
       vector<QuadTerm *> *args = new vector<QuadTerm *>();
+      vector<bool> *arg_complex = new vector<bool>();
       set<Temp *> *use_call = new set<Temp *>();
       if (call_node->args) {
         for (Exp *arg : *(call_node->args)) {
           arg->accept(*this);
           args->push_back(output_term);
+          bool complex_arg = visit_result && !visit_result->empty();
+          if (!complex_arg && output_term &&
+              output_term->kind == QuadTermKind::TEMP &&
+              complex_defs.count(output_term->get_temp()->temp->name()))
+            complex_arg = true;
+          arg_complex->push_back(complex_arg);
           if (visit_result) {
             result->insert(result->end(), visit_result->begin(), visit_result->end());
           }
@@ -378,8 +396,12 @@ void Tree2Quad::visit(Move *node) {
         use_call->insert(obj_term->get_temp()->temp);
       }
 
-      QuadCall *call_quad =
-          new QuadCall(call_node, nullptr, call_node->id, obj_term, args, new set<Temp *>(), use_call);
+      bool obj_complex = obj_term && obj_term->kind == QuadTermKind::TEMP &&
+                         complex_defs.count(obj_term->get_temp()->temp->name());
+      QuadCall *call_quad = new QuadCall(call_node, nullptr, call_node->id,
+                                         obj_term, args, arg_complex,
+                                         obj_complex, new set<Temp *>(),
+                                         use_call);
 
       set<Temp *> *def_call = new set<Temp *>();
       def_call->insert(temp_dst->temp);
@@ -387,6 +409,8 @@ void Tree2Quad::visit(Move *node) {
       QuadMoveCall *move_call =
           new QuadMoveCall(node, temp_dst, call_quad, def_call, use_call);
       result->push_back(move_call);
+      complex_defs.insert(temp_dst->temp->name());
+      call_defs.insert(temp_dst->temp->name());
 
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
@@ -426,6 +450,7 @@ void Tree2Quad::visit(Move *node) {
       QuadMoveExtCall *move_ext =
           new QuadMoveExtCall(node, temp_dst, extcall_quad, def_ext, use_ext);
       result->push_back(move_ext);
+      complex_defs.insert(temp_dst->temp->name());
 
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
@@ -600,9 +625,15 @@ void Tree2Quad::visit(Binop *node) {
   }
 
   // Create and store the MoveBinop quad
-  QuadMoveBinop *binop_quad =
-      new QuadMoveBinop(node, dst, left_term, node->op, right_term, def, use);
+  bool left_call = left_term->kind == QuadTermKind::TEMP &&
+                   call_defs.count(left_term->get_temp()->temp->name());
+  bool right_call = right_term->kind == QuadTermKind::TEMP &&
+                    call_defs.count(right_term->get_temp()->temp->name());
+  QuadMoveBinop *binop_quad = new QuadMoveBinop(
+      node, dst, left_term, node->op, right_term, left_call, right_call, def,
+      use);
   result->push_back(binop_quad);
+  complex_defs.insert(dst->temp->name());
 
   visit_result = result;
   output_term = new QuadTerm(dst);
@@ -638,6 +669,7 @@ void Tree2Quad::visit(Mem *node) {
   // Create the load quad
   QuadLoad *load_quad = new QuadLoad(node, load_temp, addr_term, def, use);
   result->push_back(load_quad);
+  complex_defs.insert(load_temp->temp->name());
 
   visit_result = result;
   output_term = new QuadTerm(load_temp);
@@ -693,12 +725,19 @@ void Tree2Quad::visit(Call *node) {
 
   // Visit arguments
   vector<QuadTerm *> *args = new vector<QuadTerm *>();
+  vector<bool> *arg_complex = new vector<bool>();
   set<Temp *> *use = new set<Temp *>();
 
   if (node->args) {
     for (Exp *arg : *(node->args)) {
       arg->accept(*this);
       args->push_back(output_term);
+      bool complex_arg = visit_result && !visit_result->empty();
+      if (!complex_arg && output_term &&
+          output_term->kind == QuadTermKind::TEMP &&
+          complex_defs.count(output_term->get_temp()->temp->name()))
+        complex_arg = true;
+      arg_complex->push_back(complex_arg);
       if (visit_result) {
         result->insert(result->end(), visit_result->begin(), visit_result->end());
       }
@@ -718,9 +757,15 @@ void Tree2Quad::visit(Call *node) {
   }
 
   // Create and store the Call quad
-  QuadCall *call_quad =
-      new QuadCall(node, result_temp, node->id, obj_term, args, def, use);
+  bool obj_complex = obj_term && obj_term->kind == QuadTermKind::TEMP &&
+                     complex_defs.count(obj_term->get_temp()->temp->name());
+  QuadCall *call_quad = new QuadCall(node, result_temp, node->id, obj_term,
+                                     args, arg_complex, obj_complex, def, use);
   result->push_back(call_quad);
+  if (result_temp) {
+    complex_defs.insert(result_temp->temp->name());
+    call_defs.insert(result_temp->temp->name());
+  }
   visit_result = result;
   output_term = result_temp ? new QuadTerm(result_temp) : nullptr;
 }
@@ -761,6 +806,8 @@ void Tree2Quad::visit(ExtCall *node) {
   if (void_funcs.find(node->extfun) == void_funcs.end()) {
     result_temp = new TempExp(node->type, temp_map->newtemp());
     def->insert(result_temp->temp);
+    complex_defs.insert(result_temp->temp->name());
+    call_defs.insert(result_temp->temp->name());
   }
 
   // Create and store the ExtCall quad

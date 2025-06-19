@@ -220,11 +220,14 @@ public:
   TempExp *dst;
   QuadTerm *left;
   QuadTerm *right;
+  bool left_call;
+  bool right_call;
   string binop;
   QuadMoveBinop(Tree *node, TempExp *dst, QuadTerm *left, string binop,
-                QuadTerm *right, set<Temp *> *def, set<Temp *> *use)
+                QuadTerm *right, bool left_call, bool right_call,
+                set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::MOVE_BINOP, node, def, use), dst(dst), left(left),
-        binop(binop), right(right) {}
+        right(right), left_call(left_call), right_call(right_call), binop(binop) {}
   void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
@@ -235,11 +238,15 @@ public:
   string name;
   QuadTerm *obj_term;
   vector<QuadTerm *> *args;
+  vector<bool> *arg_complex;
+  bool obj_complex;
   TempExp *result_temp;
   QuadCall(Tree *node, TempExp *result_temp, string name, QuadTerm *obj_term,
-           vector<QuadTerm *> *args, set<Temp *> *def, set<Temp *> *use)
+           vector<QuadTerm *> *args, vector<bool> *arg_complex, bool obj_complex,
+           set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::CALL, node, def, use), result_temp(result_temp),
-        name(name), obj_term(obj_term), args(args) {}
+        name(name), obj_term(obj_term), args(args), arg_complex(arg_complex),
+        obj_complex(obj_complex) {}
   void accept(QuadVisitor &v) override { v.visit(this); }
   void print(string &output_str, int indent, bool print_def_use) override;
 };
