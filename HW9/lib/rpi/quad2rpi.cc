@@ -176,6 +176,8 @@ string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) 
 
             result += convertQuadStm(stmt, color, indent, emitted);
         }
+
+        result += convertQuadStm(stmt, color, indent, emitted);
     }
 
     return result;
