@@ -138,10 +138,6 @@ Method_var_table *generate_method_var_table(const string &cls,
                                             Temp_map *tempMap) {
   auto *table = new Method_var_table(cls, method, tempMap);
 
-  if (cls != "_^main^_") {
-    table->add_var("_^this^_", TypeKind::CLASS);
-  }
-
   auto *locals = nameMaps->get_method_var_list(cls, method);
   if (locals) {
     for (const auto &var : *locals) {
@@ -149,6 +145,10 @@ Method_var_table *generate_method_var_table(const string &cls,
         table->add_var(var, decl->type->typeKind);
       }
     }
+  }
+
+  if (cls != "_^main^_") {
+    table->add_var("_^this^_", TypeKind::CLASS);
   }
 
   auto *formals = nameMaps->get_method_formal_list(cls, method);
@@ -537,16 +537,17 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
   } else if (compOps.count(op)) {
     Patch_list *trueList = new Patch_list();
     Patch_list *falseList = new Patch_list();
-    auto trueLabel = tempMap->newlabel();
-    auto falseLabel = tempMap->newlabel();
-
-    trueList->add_patch(trueLabel);
-    falseList->add_patch(falseLabel);
 
     node->left->accept(*this);
     auto *leftExp = expResult->unEx(tempMap);
     node->right->accept(*this);
     auto *rightExpResult = expResult->unEx(tempMap);
+
+    auto trueLabel = tempMap->newlabel();
+    auto falseLabel = tempMap->newlabel();
+
+    trueList->add_patch(trueLabel);
+    falseList->add_patch(falseLabel);
 
     expResult = new Tr_cx(trueList, falseList,
                           new tree::Cjump(op, leftExp->exp, rightExpResult->exp,
