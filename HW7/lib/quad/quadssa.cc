@@ -534,7 +534,7 @@ static void renameVariables(QuadFuncDecl* func, ControlFlowInfo* domInfo) {
                 CHECK_NULLPTR(phi->args);
                 for (const auto& arg_pair : *phi->args) {
                     CHECK_NULLPTR(arg_pair.first);
-                    newUseVec.push_back(arg_pair.first);
+                    newUseVec.push_back(new Temp(arg_pair.first->num));
                 }
                 delete phi->use;
                 phi->use = new set<Temp*>(newUseVec.begin(), newUseVec.end());

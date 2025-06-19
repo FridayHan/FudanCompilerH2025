@@ -123,6 +123,27 @@ string print_def_use(set<Temp*> *def, set<Temp*> *use) {
     return output_str;
 }
 
+string print_def_use_ordered(set<Temp*> *def, const vector<Temp*>& use_order) {
+    std::string output_str; output_str.reserve(200);
+    output_str += "def: ";
+    if (def != nullptr) {
+        vector<Temp*> tv(def->begin(), def->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
+            output_str += to_string(t->name());
+            output_str += " ";
+        }
+    }
+    output_str += "use: ";
+    for (auto t : use_order) {
+        if (t) {
+            output_str += to_string(t->name());
+            output_str += " ";
+        }
+    }
+    return output_str;
+}
+
 static string print_temp(TempExp *t) {
 #ifdef DEBUG
     cout << "In print_temp" << endl;
@@ -491,7 +512,14 @@ void QuadExtCall::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += print_indent(indent);
     use_str += "EXTCALL ";
     use_str += extcall_str;
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (args)
+            for (auto arg : *args)
+                if (arg && arg->kind == QuadTermKind::TEMP && this->use && this->use->count(arg->get_temp()->temp))
+                    ordered.push_back(arg->get_temp()->temp);
+        use_str += print_def_use_ordered(this->def, ordered);
+    }
     use_str += "\n";
     return;
 }
