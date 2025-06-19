@@ -4,8 +4,8 @@
 #include "config.hh"
 #include "namemaps.hh"
 #include "temp.hh"
-#include "treep.hh"
 #include "tree2xml.hh"
+#include "treep.hh"
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -545,23 +545,33 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
 
     node->left->accept(*this);
     auto *leftCondition = expResult->unCx(tempMap);
-    stmts->push_back(leftCondition->stm);
 
-    auto mid = tempMap->newlabel();
     if (op == "||") {
-      trueList->add(leftCondition->true_list);
-      leftCondition->false_list->patch(mid);
-    } else {
-      falseList->add(leftCondition->false_list);
-      leftCondition->true_list->patch(mid);
-    }
-    stmts->push_back(new tree::LabelStm(mid));
+      node->right->accept(*this);
+      auto *rightCondition = expResult->unCx(tempMap);
+      auto mid = tempMap->newlabel();
+      stmts->push_back(leftCondition->stm);
+      stmts->push_back(new tree::LabelStm(mid));
+      stmts->push_back(rightCondition->stm);
 
-    node->right->accept(*this);
-    auto *rightCondition = expResult->unCx(tempMap);
-    stmts->push_back(rightCondition->stm);
-    trueList->add(rightCondition->true_list);
-    falseList->add(rightCondition->false_list);
+      trueList->add(leftCondition->true_list);
+      trueList->add(rightCondition->true_list);
+      falseList->add(rightCondition->false_list);
+      leftCondition->false_list->patch(mid);
+    } else { // "&&"
+      auto mid = tempMap->newlabel();
+      leftCondition->true_list->patch(mid);
+      stmts->push_back(leftCondition->stm);
+      stmts->push_back(new tree::LabelStm(mid));
+
+      node->right->accept(*this);
+      auto *rightCondition = expResult->unCx(tempMap);
+      stmts->push_back(rightCondition->stm);
+
+      trueList->add(rightCondition->true_list);
+      falseList->add(leftCondition->false_list);
+      falseList->add(rightCondition->false_list);
+    }
 
     expResult = new Tr_cx(trueList, falseList, new tree::Seq(stmts));
   } else if (compOps.count(op)) {
