@@ -651,9 +651,7 @@ void AST_Semant_Visitor::visit(Return* node) {
              << ": Missing return value for non-void method" << endl;
     }
     
-    // 补充设置 Return 节点自身的语义信息，例如认为其返回 INT 类型（可根据场景调整）
-    AST_Semant* ret_sem = new AST_Semant(AST_Semant::Kind::Value, TypeKind::INT, variant<monostate, string, int>{}, false);
-    semant_map->setSemant(node, ret_sem);
+    // 不为 Return 语句设置单独的语义信息，保持与参考输出一致
 }
 
 void AST_Semant_Visitor::visit(PutInt* node) {

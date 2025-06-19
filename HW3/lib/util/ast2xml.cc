@@ -120,12 +120,12 @@ static void set_position_and_semant(XMLElement *el, const Pos *pos, AST* node) {
       el->SetAttribute("lvalue", semant->is_lvalue() ? "true" : "false");
       switch (tk) {
         case TypeKind::CLASS:
-          el->SetAttribute("cid", get<string>(semant->get_type_par()).c_str());
+          el->SetAttribute("type_par", get<string>(semant->get_type_par()).c_str());
           break;
         case TypeKind::INT:
           break;
         case TypeKind::ARRAY:
-          el->SetAttribute("arity", to_string(get<int>(semant->get_type_par())).c_str());
+          el->SetAttribute("type_par", to_string(get<int>(semant->get_type_par())).c_str());
           break;
         default:
           cerr << "Error: Unknown type kind" << endl;
@@ -238,27 +238,24 @@ cout<<"Type" <<endl;
   XMLElement *cn = doc->NewElement("Type");
   XMLElement *cn1;
   XMLElement *cn2;
+  cn->SetAttribute("typeKind", fdmj::type_kind_string(node->typeKind).c_str());
   switch (node->typeKind) {
-    case TypeKind::CLASS: 
-      cn->SetAttribute("typeKind", "CLASS");  
+    case TypeKind::CLASS:
       cn1 = doc->NewElement("IdExp");
       cn1->SetAttribute("id", node->cid->id.c_str());
       set_position_and_semant(cn1, node->cid->getPos(), node->cid);
       cn->InsertEndChild(cn1);
       break;
     case TypeKind::INT:
-      cn->SetAttribute("typeKind", "INT");
       break;
     case TypeKind::ARRAY:
-      cn->SetAttribute("typeKind", "ARRAY");
       if (node->arity != nullptr) {
         cn2 = doc->NewElement("Arity");
         string sss = to_string(node->arity->val);
-        cn2->SetAttribute("val", sss.c_str()); //to_string(node->arity->val).c_str());
+        cn2->SetAttribute("val", sss.c_str());
         set_position_and_semant(cn2, node->arity->getPos(), node->arity);
         cn->InsertEndChild(cn2);
-      }
-      else {
+      } else {
         cerr << "Error: Array type must have an arity" << endl;
         el = nullptr;
         return;
