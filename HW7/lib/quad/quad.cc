@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <vector>
+#include <algorithm>
 #include "quad.hh"
 #include "temp.hh"
 
@@ -102,14 +104,18 @@ string print_def_use(set<Temp*> *def, set<Temp*> *use) {
     std::string output_str; output_str.reserve(200);
     output_str += "def: ";
     if (def != nullptr) {
-        for (auto t : *def) {
+        vector<Temp*> tv(def->begin(), def->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
             output_str += to_string(t->name());
             output_str += " ";
         }
     }
     output_str += "use: ";
     if (use != nullptr) {
-        for (auto t : *use) {
+        vector<Temp*> tv(use->begin(), use->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
             output_str += to_string(t->name());
             output_str += " ";
         }
