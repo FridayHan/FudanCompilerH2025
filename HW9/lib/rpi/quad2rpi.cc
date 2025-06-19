@@ -86,77 +86,98 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
 
 string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) {
     DEBUG_PRINT2("[convert Func] 处理函数:", func->funcname);
-    string result; 
+    string result;
     current_funcname = func->funcname;
     string indent_str(indent, ' ');
-    
+
     result += "@ Here's function: " + func->funcname + "\n\n";
-    
+
     string func_label = normalizeName(func->funcname);
     result += ".balign 4\n";
     result += ".global " + func_label + "\n";
     result += ".section .text\n\n";
     result += func_label + ":\n";
     current_funcname = func_label;
-    
+
     result += indent_str + "push {r4-r10, fp, lr}\n";
-    result += indent_str + "add fp, sp, #32\n";
-    
-    // 收集所有跳转目标，确保生成所有需要的标签
-    set<string> all_jump_targets;
-    for (auto block : *func->quadblocklist) {
-        for (auto stmt : *block->quadlist) {
-            if (stmt->kind == QuadKind::JUMP) {
-                QuadJump* jump = static_cast<QuadJump*>(stmt);
-                all_jump_targets.insert(jump->label->str());
-            } else if (stmt->kind == QuadKind::CJUMP) {
-                QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-                all_jump_targets.insert(cjump->t->str());
-                all_jump_targets.insert(cjump->f->str());
-            }
-        }
-    }
-    
-    // 跟踪已生成的标签
-    map<string, bool> label_emitted;
-    
+    result += indent_str + "add fp, sp, #" + to_string(BYTES_FOR_CALLEE_REGS - 4) + "\n";
+
+    int spill_bytes = color->spills.size() * Compiler_Config::get("int_length");
+    if (spill_bytes > 0)
+        result += indent_str + "sub sp, sp, #" + to_string(spill_bytes) + "\n";
+
+    map<string,bool> emitted;
+
     for (auto block : *func->quadblocklist) {
         string block_label = block->entry_label->str();
-        DEBUG_PRINT2("[convert Func] 处理基本块:", block_label);
-        // 生成基本块标签
-        if (!label_emitted[block_label]) {
+        if (!emitted[block_label]) {
             result += current_funcname + "$" + block_label + ": \n";
-            label_emitted[block_label] = true;
+            emitted[block_label] = true;
         }
-        
-        for (auto stmt : *block->quadlist) {
-            DEBUG_PRINT2("[convert Func] 处理语句 kind:", (int)stmt->kind);
-            // 在处理每个语句前，检查是否需要生成跳转目标标签
-            if (stmt->kind == QuadKind::CJUMP) {
-                QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-                // 处理CJUMP指令
-                result += convertQuadStm(stmt, color, indent, label_emitted);
-                
-                // CJUMP后立即生成false分支标签
-                string false_label = cjump->f->str();
-                if (!label_emitted[false_label]) {
-                    result += current_funcname + "$" + false_label + ": \n";
-                    label_emitted[false_label] = true;
+
+        auto stms = block->quadlist;
+        for(size_t i=0;i<stms->size();++i){
+            QuadStm* stmt = stms->at(i);
+
+            if(stmt->kind==QuadKind::LABEL){
+                string lname = static_cast<QuadLabel*>(stmt)->label->str();
+                if(!emitted[lname]){
+                    result += current_funcname + "$" + lname + ": \n";
+                    emitted[lname]=true;
                 }
-            } else {
-                result += convertQuadStm(stmt, color, indent, label_emitted);
+                continue;
             }
+
+            if(stmt->kind==QuadKind::JUMP){
+                auto j = static_cast<QuadJump*>(stmt);
+                string target = j->label->str();
+                bool next_is_target = false;
+                if(i+1 < stms->size() && stms->at(i+1)->kind==QuadKind::LABEL){
+                    auto nl = static_cast<QuadLabel*>(stms->at(i+1));
+                    next_is_target = (nl->label->str() == target && !emitted[target]);
+                }
+                if(!next_is_target)
+                    result += indent_str + "b " + current_funcname + "$" + target + "\n";
+                continue;
+            }
+
+            // combine ADD followed by LOAD into one instruction when possible
+            if (stmt->kind==QuadKind::MOVE_BINOP && i+1<stms->size() && stms->at(i+1)->kind==QuadKind::LOAD) {
+                auto binop = static_cast<QuadMoveBinop*>(stmt);
+                auto nxt = static_cast<QuadLoad*>(stms->at(i+1));
+                if (nxt->src->kind==QuadTermKind::TEMP && binop->dst->temp == nxt->src->get_temp()->temp &&
+                    binop->binop=="+" && binop->right->kind==QuadTermKind::CONST) {
+                    result += loadSpillIfNeeded(binop->left, color, 9, indent);
+                    string base_reg = getTermStr(binop->left, color, 9);
+                    int off = binop->right->get_const();
+                    Temp* dst_temp = nxt->dst->temp;
+                    bool dst_spill = color->is_spill(dst_temp->num);
+                    string dst_reg = dst_spill? "r9" : "r" + to_string(color->color_of(dst_temp->num));
+                    result += indent_str + "ldr " + dst_reg + ", [" + base_reg + ", #" + to_string(off) + "]\n";
+                    if (dst_spill) result += storeSpilledTemp(dst_temp->num, color, 9, indent);
+                    i++; continue;
+                }
+            }
+
+            if (stmt->kind==QuadKind::MOVE_BINOP && i+1<stms->size() && stms->at(i+1)->kind==QuadKind::STORE) {
+                auto binop = static_cast<QuadMoveBinop*>(stmt);
+                auto nxt = static_cast<QuadStore*>(stms->at(i+1));
+                if (nxt->dst->kind==QuadTermKind::TEMP && binop->dst->temp == nxt->dst->get_temp()->temp &&
+                    binop->binop=="+" && binop->right->kind==QuadTermKind::CONST) {
+                    result += loadSpillIfNeeded(binop->left, color, 9, indent);
+                    string base_reg = getTermStr(binop->left, color, 9);
+                    int off = binop->right->get_const();
+                    result += loadSpillIfNeeded(nxt->src, color, 10, indent);
+                    string src_reg = getTermStr(nxt->src, color, 10);
+                    result += indent_str + "str " + src_reg + ", [" + base_reg + ", #" + to_string(off) + "]\n";
+                    i++; continue;
+                }
+            }
+
+            result += convertQuadStm(stmt, color, indent, emitted);
         }
     }
-    
-    // 确保所有跳转目标标签都被生成
-    for (const string& target : all_jump_targets) {
-        if (!label_emitted[target]) {
-            result += current_funcname + "$" + target + ": \n";
-            label_emitted[target] = true;
-        }
-    }
-    
+
     return result;
 }
 
@@ -213,13 +234,17 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             DEBUG_PRINT("[convertQuadStm] 处理MOVE语句");
             QuadMove* move = static_cast<QuadMove*>(stmt);
             Temp* dst_temp = move->dst->temp;
-            
-            string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
-            string src_str = getTermStr(move->src, color);
-            
-            if (dst_reg != src_str) {
+            result += loadSpillIfNeeded(move->src, color, 9, indent);
+            string src_str = getTermStr(move->src, color, 9);
+            bool src_name = (move->src->kind == QuadTermKind::MAME);
+
+            string dst_reg = color->is_spill(dst_temp->num) ? "r9" : "r" + to_string(color->color_of(dst_temp->num));
+            if (src_name)
+                result += indent_str + "ldr " + dst_reg + ", " + src_str + "\n";
+            else if (dst_reg != src_str)
                 result += indent_str + "mov " + dst_reg + ", " + src_str + "\n";
-            }
+            if (color->is_spill(dst_temp->num))
+                result += storeSpilledTemp(dst_temp->num, color, 9, indent);
             break;
         }
         
@@ -227,21 +252,29 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             DEBUG_PRINT("[convertQuadStm] 处理LOAD语句");
             QuadLoad* load = static_cast<QuadLoad*>(stmt);
             Temp* dst_temp = load->dst->temp;
-            
-            string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
-            string src_str = getTermStr(load->src, color);
-            
-            result += indent_str + "ldr " + dst_reg + ", [" + src_str + "]\n";
+            result += loadSpillIfNeeded(load->src, color, 9, indent);
+            string src_str = getTermStr(load->src, color, 9);
+            bool src_name = (load->src->kind == QuadTermKind::MAME);
+            string dst_reg = color->is_spill(dst_temp->num) ? "r9" : "r" + to_string(color->color_of(dst_temp->num));
+
+            if (src_name)
+                result += indent_str + "ldr " + dst_reg + ", " + src_str + "\n";
+            else
+                result += indent_str + "ldr " + dst_reg + ", [" + src_str + "]\n";
+
+            if (color->is_spill(dst_temp->num))
+                result += storeSpilledTemp(dst_temp->num, color, 9, indent);
             break;
         }
         
         case QuadKind::STORE: {
             DEBUG_PRINT("[convertQuadStm] 处理STORE语句");
             QuadStore* store = static_cast<QuadStore*>(stmt);
-            
-            string src_str = getTermStr(store->src, color);
-            string dst_str = getTermStr(store->dst, color);
-            
+            result += loadSpillIfNeeded(store->src, color, 9, indent);
+            result += loadSpillIfNeeded(store->dst, color, 10, indent);
+            string src_str = getTermStr(store->src, color, 9);
+            string dst_str = getTermStr(store->dst, color, 10);
+
             result += indent_str + "str " + src_str + ", [" + dst_str + "]\n";
             break;
         }
@@ -250,10 +283,18 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             DEBUG_PRINT("[convertQuadStm] 处理MOVE_BINOP语句");
             QuadMoveBinop* binop = static_cast<QuadMoveBinop*>(stmt);
             Temp* dst_temp = binop->dst->temp;
-            
-            string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
-            string left_str = getTermStr(binop->left, color);
-            string right_str = getTermStr(binop->right, color);
+
+            result += loadSpillIfNeeded(binop->left, color, 9, indent);
+            result += loadSpillIfNeeded(binop->right, color, 10, indent);
+            string left_str = getTermStr(binop->left, color, 9);
+            string right_str = getTermStr(binop->right, color, 10);
+
+            string dst_reg;
+            bool dst_spill = color->is_spill(dst_temp->num);
+            if (dst_spill)
+                dst_reg = "r9";
+            else
+                dst_reg = "r" + to_string(color->color_of(dst_temp->num));
             
             string arm_op;
             if (binop->binop == "+") arm_op = "add";
@@ -268,6 +309,8 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             else arm_op = "add";
             
             result += indent_str + arm_op + " " + dst_reg + ", " + left_str + ", " + right_str + "\n";
+            if (dst_spill)
+                result += storeSpilledTemp(dst_temp->num, color, 9, indent);
             break;
         }
         
@@ -281,7 +324,7 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
         case QuadKind::CJUMP: {
             DEBUG_PRINT("[convertQuadStm] 处理CJUMP语句");
             QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-            
+
             string left_str, right_str;
             
             if (cjump->left->kind == QuadTermKind::TEMP && color->is_spill(cjump->left->get_temp()->temp->num)) {
@@ -311,11 +354,12 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             
             result += indent_str + "b" + condition + " " + current_funcname + "$" + cjump->t->str() + "\n";
             
-            // 为false分支生成标签
             string false_label = cjump->f->str();
             if (!label_emitted[false_label]) {
                 result += current_funcname + "$" + false_label + ": \n";
                 label_emitted[false_label] = true;
+            } else {
+                result += indent_str + "b " + current_funcname + "$" + false_label + "\n";
             }
             break;
         }
@@ -323,9 +367,10 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
         case QuadKind::RETURN: {
             DEBUG_PRINT("[convertQuadStm] 处理RETURN语句");
             QuadReturn* ret = static_cast<QuadReturn*>(stmt);
-            
+
             if (ret->value) {
-                string src_str = getTermStr(ret->value, color);
+                result += loadSpillIfNeeded(ret->value, color, 9, indent);
+                string src_str = getTermStr(ret->value, color, 9);
                 if (src_str != "r0") {
                     result += indent_str + "mov r0, " + src_str + "\n";
                 }
@@ -340,15 +385,14 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
         case QuadKind::EXTCALL: {
             DEBUG_PRINT("[convertQuadStm] 处理EXTCALL语句");
             QuadExtCall* extcall = static_cast<QuadExtCall*>(stmt);
-            
+
             for (int i = 0; i < extcall->args->size() && i < 4; i++) {
                 QuadTerm* arg = extcall->args->at(i);
+                result += loadSpillIfNeeded(arg, color, 9, indent);
                 string dst_reg = "r" + to_string(i);
-                string arg_str = getTermStr(arg, color);
-                
-                if (arg_str != dst_reg) {
+                string arg_str = getTermStr(arg, color, 9);
+                if (arg_str != dst_reg)
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-                }
             }
             
             result += indent_str + "bl " + extcall->extfun + "\n";
@@ -360,22 +404,25 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             QuadMoveExtCall* moveExtcall = static_cast<QuadMoveExtCall*>(stmt);
             QuadExtCall* extcall = moveExtcall->extcall;
             Temp* dst_temp = moveExtcall->dst->temp;
-            
+
             for (int i = 0; i < extcall->args->size() && i < 4; i++) {
                 QuadTerm* arg = extcall->args->at(i);
+                result += loadSpillIfNeeded(arg, color, 9, indent);
                 string dst_reg = "r" + to_string(i);
-                string arg_str = getTermStr(arg, color);
-                
-                if (arg_str != dst_reg) {
+                string arg_str = getTermStr(arg, color, 9);
+                if (arg_str != dst_reg)
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-                }
             }
             
             result += indent_str + "bl " + extcall->extfun + "\n";
             
-            string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
-            if (dst_reg != "r0") {
-                result += indent_str + "mov " + dst_reg + ", r0\n";
+            if (color->is_spill(dst_temp->num)) {
+                result += indent_str + "mov r9, r0\n";
+                result += storeSpilledTemp(dst_temp->num, color, 9, indent);
+            } else {
+                string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
+                if (dst_reg != "r0")
+                    result += indent_str + "mov " + dst_reg + ", r0\n";
             }
             break;
         }
@@ -383,22 +430,20 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
         case QuadKind::CALL: {
             DEBUG_PRINT("[convertQuadStm] 处理CALL语句");
             QuadCall* call = static_cast<QuadCall*>(stmt);
-            
+
             for (int i = 0; i < call->args->size() && i < 4; i++) {
                 QuadTerm* arg = call->args->at(i);
+                result += loadSpillIfNeeded(arg, color, 9, indent);
                 string dst_reg = "r" + to_string(i);
-                string arg_str = getTermStr(arg, color);
-                
-                if (arg_str != dst_reg) {
+                string arg_str = getTermStr(arg, color, 9);
+                if (arg_str != dst_reg)
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-                }
             }
             
             if (call->obj_term) {
-                string obj_str = getTermStr(call->obj_term, color);
-                result += indent_str + "add r1, " + obj_str + ", #" + call->name + "\n";
-                result += indent_str + "ldr r1, [r1]\n";
-                result += indent_str + "blx r1\n";
+                result += loadSpillIfNeeded(call->obj_term, color, 9, indent);
+                string obj_str = getTermStr(call->obj_term, color, 9);
+                result += indent_str + "blx " + obj_str + "\n";
             } else {
                 result += indent_str + "bl " + normalizeName(call->name) + "\n";
             }
@@ -410,29 +455,31 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             QuadMoveCall* moveCall = static_cast<QuadMoveCall*>(stmt);
             QuadCall* call = moveCall->call;
             Temp* dst_temp = moveCall->dst->temp;
-            
+
             for (int i = 0; i < call->args->size() && i < 4; i++) {
                 QuadTerm* arg = call->args->at(i);
+                result += loadSpillIfNeeded(arg, color, 9, indent);
                 string dst_reg = "r" + to_string(i);
-                string arg_str = getTermStr(arg, color);
-                
-                if (arg_str != dst_reg) {
+                string arg_str = getTermStr(arg, color, 9);
+                if (arg_str != dst_reg)
                     result += indent_str + "mov " + dst_reg + ", " + arg_str + "\n";
-                }
             }
             
             if (call->obj_term) {
-                string obj_str = getTermStr(call->obj_term, color);
-                result += indent_str + "add r1, " + obj_str + ", #" + call->name + "\n";
-                result += indent_str + "ldr r1, [r1]\n";
-                result += indent_str + "blx r1\n";
+                result += loadSpillIfNeeded(call->obj_term, color, 9, indent);
+                string obj_str = getTermStr(call->obj_term, color, 9);
+                result += indent_str + "blx " + obj_str + "\n";
             } else {
                 result += indent_str + "bl " + normalizeName(call->name) + "\n";
             }
-            
-            string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
-            if (dst_reg != "r0") {
-                result += indent_str + "mov " + dst_reg + ", r0\n";
+
+            if (color->is_spill(dst_temp->num)) {
+                result += indent_str + "mov r9, r0\n";
+                result += storeSpilledTemp(dst_temp->num, color, 9, indent);
+            } else {
+                string dst_reg = "r" + to_string(color->color_of(dst_temp->num));
+                if (dst_reg != "r0")
+                    result += indent_str + "mov " + dst_reg + ", r0\n";
             }
             break;
         }
@@ -458,7 +505,7 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
         current_funcname = func->funcname;
         Color *c = cm->color_map[func->funcname];
         int indent = 9;
-        result += convert(func, dfi, c, indent) + "\n";
+        result += convert(func, dfi, c, indent);
     }
     
     result += ".global malloc\n";
