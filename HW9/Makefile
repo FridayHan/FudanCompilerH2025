@@ -40,7 +40,7 @@ PATCHDEMO = $(BUILD_DIR)/tools/patchdemo/patchdemo
 run: $(MAIN)
 	@mkdir -p $(CURDIR)/test/tmp
 	@cp $(CURDIR)/test/input_example/*.quad $(CURDIR)/test/tmp/
-	@cp $(CURDIR)/test/input_example/k5/*.clr $(CURDIR)/test/tmp/
+	@cp $(CURDIR)/test/input_example/k9/*.clr $(CURDIR)/test/tmp/
 	@cd $(CURDIR)/test/tmp && \
 	for file in $$(ls .); do \
 		if [ "$${file#*.}" = "4-prepared-xml.quad" ]; then \
@@ -66,7 +66,7 @@ FILE=test1
 run-one: $(MAIN)
 	@mkdir -p $(CURDIR)/test/tmp
 	@cp $(CURDIR)/test/input_example/$(FILE).4-prepared-xml.quad $(CURDIR)/test/tmp/
-	@cp $(CURDIR)/test/input_example/k5/$(FILE).4-xml.clr $(CURDIR)/test/tmp/
+	@cp $(CURDIR)/test/input_example/k9/$(FILE).4-xml.clr $(CURDIR)/test/tmp/
 	@cd $(CURDIR)/test/tmp && \
 	echo "Reading $(FILE).4-prepared-xml.quad and $(FILE).4-xml.clr"; \
 	$(MAIN) "$(FILE)"
