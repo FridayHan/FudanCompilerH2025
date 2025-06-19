@@ -238,6 +238,8 @@ class QuadMoveBinop : public QuadStm{
                 set<Temp *> *def, set<Temp *> *use)
       : QuadStm(QuadKind::MOVE_BINOP, node, def, use), dst(dst), left(left),
         right(right), left_call(left_call), right_call(right_call), binop(binop) {}
+    QuadMoveBinop(Tree *node, TempExp *dst, QuadTerm *left, string binop, QuadTerm *right, set<Temp*> *def, set<Temp*> *use) 
+        : QuadStm(QuadKind::MOVE_BINOP, node, def, use), dst(dst), left(left), binop(binop), right(right) {}
   void accept(QuadVisitor &v) override { v.visit(this); }
     void print(string &output_str, int indent, bool print_def_use) override;
     

@@ -10,6 +10,8 @@ SEMANT_DIR = $(TEST_DIR)/semant
 IR_DIR = $(TEST_DIR)/ir
 QUAD_DIR = $(TEST_DIR)/quad
 SSA_DIR = $(TEST_DIR)/ssa
+CLR_DIR = $(TEST_DIR)/clr
+ASM_DIR = $(TEST_DIR)/asm
 MAIN_EXE = $(BUILD_DIR)/tools/main/main
 
 # 可选的 VERBOSE 模式
@@ -36,6 +38,8 @@ clean:
 	$(RM) $(IR_DIR)/*
 	$(RM) $(QUAD_DIR)/*
 	$(RM) $(SSA_DIR)/*
+	$(RM) $(CLR_DIR)/*
+	$(RM) $(ASM_DIR)/*
 
 veryclean: clean 
 	$(RM) $(BUILD_DIR)
@@ -52,6 +56,8 @@ run: $(MAIN_EXE)
 	$(MAKE) semant2ir
 	$(MAKE) ir2quad
 	$(MAKE) quad2ssa
+	$(MAKE) ssa2clr
+	$(MAKE) clr2asm
 	@printf "\n$(COLOR_GREEN)All tasks completed successfully!$(COLOR_RESET)\n"
 
 run-one: $(MAIN_EXE)
@@ -60,10 +66,12 @@ run-one: $(MAIN_EXE)
 	$(MAKE) semant2ir-one
 	$(MAKE) ir2quad-one
 	$(MAKE) quad2ssa-one
+	$(MAKE) ssa2clr-one
+	$(MAKE) clr2asm-one
 
 
 # 编译相关规则
-.PHONY: fmj2ast-one ast2semant-one semant2ir-one ir2quad-one quad2ssa-one fmj2ast ast2semant semant2ir ir2quad quad2ssa
+.PHONY: fmj2ast-one ast2semant-one semant2ir-one ir2quad-one quad2ssa-one ssa2clr-one clr2asm-one fmj2ast ast2semant semant2ir ir2quad quad2ssa ssa2clr clr2asm
 
 # 修改为只传递文件名，不包含路径和扩展名
 fmj2ast-one: $(MAIN_EXE)
@@ -89,6 +97,16 @@ ir2quad-one: $(MAIN_EXE)
 quad2ssa-one: $(MAIN_EXE)
 	cd $(TEST_DIR) && \
 	$(MAIN_EXE) "quad2ssa" "${FILE}" $(REDIRECT); \
+	cd .. $(REDIRECT)
+
+ssa2clr-one: $(MAIN_EXE)
+	cd $(TEST_DIR) && \
+	$(MAIN_EXE) "ssa2clr" "${FILE}" $(REDIRECT); \
+	cd .. $(REDIRECT)
+
+clr2asm-one: $(MAIN_EXE)
+	cd $(TEST_DIR) && \
+	$(MAIN_EXE) "clr2asm" "${FILE}" $(REDIRECT); \
 	cd .. $(REDIRECT)
 
 fmj2ast: $(MAIN_EXE)
@@ -150,6 +168,30 @@ quad2ssa: $(MAIN_EXE)
 		$(MAKE) -C $(CURDIR) quad2ssa-one FILE=$$filename $(REDIRECT); \
 	done; \
 	printf "\033[2K$(COLOR_GREEN)Quad to SSA Compilation Completed Successfully!$(COLOR_RESET)\n"
+
+ssa2clr: $(MAIN_EXE)
+	@cd $(TEST_DIR) && \
+	total=$$(ls $(SSA_DIR)/*.4-ssa.quad | wc -l); \
+	count=0; \
+	for file in $$(ls $(SSA_DIR)/*.4-ssa.quad); do \
+		count=$$((count + 1)); \
+		printf "\033[2K$(COLOR_YELLOW)Compiling SSA to CLR: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
+		filename=$$(basename $$file | cut -d. -f1); \
+		$(MAKE) -C $(CURDIR) ssa2clr-one FILE=$$filename $(REDIRECT); \
+	done; \
+	printf "\033[2K$(COLOR_GREEN)SSA to CLR Compilation Completed Successfully!$(COLOR_RESET)\n"
+
+clr2asm: $(MAIN_EXE)
+	@cd $(TEST_DIR) && \
+	total=$$(ls $(CLR_DIR)/*.4-xml.clr | wc -l); \
+	count=0; \
+	for file in $$(ls $(CLR_DIR)/*.4-xml.clr); do \
+		count=$$((count + 1)); \
+		printf "\033[2K$(COLOR_BLUE)Compiling CLR to ASM: [%-50s] %d/%d$(COLOR_RESET)\r" $$(printf '#%.0s' $$(seq 1 $$((count * 50 / total)))) $$count $$total; \
+		filename=$$(basename $$file | cut -d. -f1); \
+		$(MAKE) -C $(CURDIR) clr2asm-one FILE=$$filename $(REDIRECT); \
+	done; \
+	printf "\033[2K$(COLOR_GREEN)CLR to ASM Compilation Completed Successfully!$(COLOR_RESET)\n"
 
 
 # 提交相关规则

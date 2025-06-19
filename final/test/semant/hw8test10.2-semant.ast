@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDMJAST>
+    <NameMaps>
+        <Class name="_^main^_">
+            <Method name="main">
+                <Formal id="_^return^_main">
+                    <Formal>
+                        <Type typeKind="INT"/>
+                        <IdExp id="_^return^_main"/>
+                    </Formal>
+                </Formal>
+                <Var id="x">
+                    <VarDecl>
+                        <Type typeKind="INT"/>
+                        <IdExp id="x"/>
+                        <IntInit val="1"/>
+                    </VarDecl>
+                </Var>
+            </Method>
+        </Class>
+    </NameMaps>
+    <Program>
+        <MainMethod>
+            <VarDeclList>
+                <VarDecl>
+                    <Type typeKind="INT"/>
+                    <IdExp id="x"/>
+                    <IntInit val="1"/>
+                </VarDecl>
+            </VarDeclList>
+            <StmList>
+                <PutInt>
+                    <IdExp s_kind="Value" typeKind="INT" lvalue="true" id="x"/>
+                </PutInt>
+                <PutCh>
+                    <IntExp s_kind="Value" typeKind="INT" lvalue="false" val="10"/>
+                </PutCh>
+                <Return>
+                    <IdExp s_kind="Value" typeKind="INT" lvalue="true" id="x"/>
+                </Return>
+            </StmList>
+        </MainMethod>
+        <ClassDeclList/>
+    </Program>
+</FDMJAST>
