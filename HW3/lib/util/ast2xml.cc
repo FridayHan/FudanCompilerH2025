@@ -36,6 +36,68 @@ XMLDocument* ast2xml(Program *node, AST_Semant_Map *semant_map, bool location_fl
   return v.doc;
 }
 
+static XMLElement* name_maps_to_xml(Name_Maps* maps, XMLDocument* doc) {
+  if (!maps) return nullptr;
+  AST2XML v; v.doc = doc;
+  XMLElement* root = doc->NewElement("NameMaps");
+  for (const string& cls : maps->get_all_classes()) {
+    XMLElement* c = doc->NewElement("Class");
+    c->SetAttribute("name", cls.c_str());
+    string parent = maps->get_parent_class(cls);
+    if (!parent.empty()) {
+      string root_parent = parent;
+      while (!maps->get_parent_class(root_parent).empty()) {
+        root_parent = maps->get_parent_class(root_parent);
+      }
+      c->SetAttribute("ancestor", root_parent.c_str());
+    }
+    // class variables
+    for (const string& var : maps->get_class_var_names(cls)) {
+      XMLElement* ve = doc->NewElement("Var");
+      ve->SetAttribute("id", var.c_str());
+      VarDecl* vd = maps->get_class_var(cls, var);
+      if (vd) { vd->accept(v); if (v.el) ve->InsertEndChild(v.el); }
+      c->InsertEndChild(ve);
+    }
+    // methods
+    for (const string& mname : maps->get_class_method_names(cls)) {
+      XMLElement* me = doc->NewElement("Method");
+      me->SetAttribute("name", mname.c_str());
+      for (const string& fname : maps->get_method_formal_list_names(cls, mname)) {
+        XMLElement* fe = doc->NewElement("Formal");
+        fe->SetAttribute("id", fname.c_str());
+        Formal* f = maps->get_method_formal(cls, mname, fname);
+        if (f) { f->accept(v); if (v.el) fe->InsertEndChild(v.el); }
+        me->InsertEndChild(fe);
+      }
+      for (const string& var : maps->get_method_var_names(cls, mname)) {
+        XMLElement* ve = doc->NewElement("Var");
+        ve->SetAttribute("id", var.c_str());
+        VarDecl* vd = maps->get_method_var(cls, mname, var);
+        if (vd) { vd->accept(v); if (v.el) ve->InsertEndChild(v.el); }
+        me->InsertEndChild(ve);
+      }
+      c->InsertEndChild(me);
+    }
+    root->InsertEndChild(c);
+  }
+  return root;
+}
+
+XMLDocument* ast_with_maps2xml(Program* node, Name_Maps* maps, AST_Semant_Map* semant_map, bool location_flag, bool semant_flag) {
+  XMLDocument* prog_doc = ast2xml(node, semant_map, location_flag, semant_flag);
+  XMLDocument* doc = new XMLDocument();
+  XMLDeclaration* decl = doc->NewDeclaration("xml version=\"1.0\" encoding=\"UTF-8\"");
+  doc->InsertFirstChild(decl);
+  XMLElement* root = doc->NewElement("FDMJAST");
+  doc->InsertEndChild(root);
+  XMLElement* nm_el = name_maps_to_xml(maps, doc);
+  if (nm_el) root->InsertEndChild(nm_el);
+  root->InsertEndChild(prog_doc->RootElement()->DeepClone(doc));
+  delete prog_doc;
+  return doc;
+}
+
 static void set_position_and_semant(XMLElement *el, const Pos *pos, AST* node) {
   if (_location_flag && pos != nullptr) {
     if (pos->sline != 0 && pos->scolumn != 0 && pos->eline != 0 && pos->ecolumn != 0) {

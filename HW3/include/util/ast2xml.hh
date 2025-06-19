@@ -5,12 +5,14 @@
 #include "FDMJAST.hh"
 #include "tinyxml2.hh"
 #include "semant.hh"
+#include "namemaps.hh"
 
 using namespace std;
 using namespace fdmj;
 using namespace tinyxml2;
 
 XMLDocument* ast2xml(Program *node, AST_Semant_Map *semant_map, bool location_flag, bool semant_flag);
+XMLDocument* ast_with_maps2xml(Program* node, Name_Maps* maps, AST_Semant_Map* semant_map, bool location_flag, bool semant_flag);
 
 class AST2XML : public fdmj::AST_Visitor {
 public:
