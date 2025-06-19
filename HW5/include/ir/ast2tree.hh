@@ -27,15 +27,17 @@ tree::Program *ast2tree(fdmj::Program *prog, AST_Semant_Map *semant_map);
 Class_table *generate_class_table(AST_Semant_Map *semant_map);
 Method_var_table *generate_method_var_table(const string &class_name,
                                             const string &method_name,
-                                            Name_Maps *nm, tree::Temp_map *temp_map);
+                                            Name_Maps *nm,
+                                            tree::Temp_map *temp_map);
 tree::Eseq *createArrayBinaryOp(tree::Exp *leftArr, tree::Exp *rightArr,
                                 const string &op, Temp_map *temp_map);
 tree::Eseq *createArrayUnaryOp(tree::Exp *arrayExp, const string &op,
                                Temp_map *temp_map);
-tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType, Temp_map *temp_map);
+tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType,
+                       Temp_map *temp_map);
 static tree::Exp *materializeIfNeeded(tree::Exp *expr, bool &needsWrap,
-                                      vector<tree::Stm *> *stmts, Temp_map *temp_map,
-                                      tree::Type ty);
+                                      vector<tree::Stm *> *stmts,
+                                      Temp_map *temp_map, tree::Type ty);
 static tree::Exp *buildBoundCheck(tree::Exp *idx, tree::Exp *arrAddr,
                                   Temp_map *temp_map);
 
@@ -232,7 +234,7 @@ public:
 
   // Program
   void translateClassMethods(fdmj::Program *node,
-                               vector<tree::FuncDecl *> *functionDeclList);
+                             vector<tree::FuncDecl *> *functionDeclList);
   tree::FuncDecl *translateMainMethod(fdmj::Program *node);
 
   // MainMethod
