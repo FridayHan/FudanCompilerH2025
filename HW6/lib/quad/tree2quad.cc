@@ -7,6 +7,7 @@
 #include "config.hh"
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -85,7 +86,10 @@ void Tree2Quad::visit(FuncDecl *node) {
   vector<QuadBlock *> *blocks = new vector<QuadBlock *>();
 
   // Initialize the temp_map with the function's last_temp_num and
-  // last_label_num
+  // last_label_num. The temp map is cleared for each function so that
+  // temporaries are numbered locally as in the reference implementation.
+  temp_map->t_map.clear();
+  temp_map->l_map.clear();
   temp_map->next_temp = node->last_temp_num + 1;
   temp_map->next_label = node->last_label_num + 1;
 
@@ -230,13 +234,21 @@ void Tree2Quad::visit(Move *node) {
   if (node->dst->getTreeKind() == Kind::MEM) {
     Mem *mem_dst = static_cast<Mem *>(node->dst);
 
+    vector<QuadStm *> *result = new vector<QuadStm *>();
+
     // Get address term
     mem_dst->mem->accept(*this);
     QuadTerm *addr_term = output_term;
+    if (visit_result) {
+      result->insert(result->end(), visit_result->begin(), visit_result->end());
+    }
 
     // Get source term
     node->src->accept(*this);
     QuadTerm *src_term = output_term;
+    if (visit_result) {
+      result->insert(result->end(), visit_result->begin(), visit_result->end());
+    }
 
     // Create def/use sets
     set<Temp *> *def = new set<Temp *>();
@@ -251,7 +263,8 @@ void Tree2Quad::visit(Move *node) {
 
     // Create and store the Store quad
     QuadStore *store_quad = new QuadStore(node, src_term, addr_term, def, use);
-    visit_result = new vector<QuadStm *>(1, store_quad);
+    result->push_back(store_quad);
+    visit_result = result;
     output_term = nullptr;
     return;
   }
@@ -264,9 +277,14 @@ void Tree2Quad::visit(Move *node) {
     if (node->src->getTreeKind() == Kind::MEM) {
       Mem *mem_src = static_cast<Mem *>(node->src);
 
+      vector<QuadStm *> *result = new vector<QuadStm *>();
+
       // Get address term
       mem_src->mem->accept(*this);
       QuadTerm *addr_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
 
       // Create def/use sets
       set<Temp *> *def = new set<Temp *>();
@@ -279,7 +297,8 @@ void Tree2Quad::visit(Move *node) {
 
       // Create and store the Load quad
       QuadLoad *load_quad = new QuadLoad(node, temp_dst, addr_term, def, use);
-      visit_result = new vector<QuadStm *>(1, load_quad);
+      result->push_back(load_quad);
+      visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
     }
@@ -290,13 +309,21 @@ void Tree2Quad::visit(Move *node) {
     if (node->src->getTreeKind() == Kind::BINOP) {
       Binop *binop_src = static_cast<Binop *>(node->src);
 
+      vector<QuadStm *> *result = new vector<QuadStm *>();
+
       // Visit left operand
       binop_src->left->accept(*this);
       QuadTerm *left_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
 
       // Visit right operand
       binop_src->right->accept(*this);
       QuadTerm *right_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
 
       // Create def/use sets
       set<Temp *> *def = new set<Temp *>();
@@ -313,21 +340,54 @@ void Tree2Quad::visit(Move *node) {
       // Create and store the MoveBinop quad
       QuadMoveBinop *binop_quad = new QuadMoveBinop(
           node, temp_dst, left_term, binop_src->op, right_term, def, use);
-      visit_result = new vector<QuadStm *>(1, binop_quad);
+      result->push_back(binop_quad);
+      visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
     }
 
     // Handle move call: temp <- call
     if (node->src->getTreeKind() == Kind::CALL) {
-      node->src->accept(*this);
-      vector<QuadStm *> *result = visit_result;
-      QuadCall *call_quad = dynamic_cast<QuadCall *>(result->back());
+      Call *call_node = static_cast<Call *>(node->src);
+      vector<QuadStm *> *result = new vector<QuadStm *>();
+
+      // Visit object
+      call_node->obj->accept(*this);
+      QuadTerm *obj_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
+
+      // Visit arguments
+      vector<QuadTerm *> *args = new vector<QuadTerm *>();
+      set<Temp *> *use_call = new set<Temp *>();
+      if (call_node->args) {
+        for (Exp *arg : *(call_node->args)) {
+          arg->accept(*this);
+          args->push_back(output_term);
+          if (visit_result) {
+            result->insert(result->end(), visit_result->begin(), visit_result->end());
+          }
+          if (output_term->kind == QuadTermKind::TEMP) {
+            use_call->insert(output_term->get_temp()->temp);
+          }
+        }
+      }
+
+      if (obj_term && obj_term->kind == QuadTermKind::TEMP) {
+        use_call->insert(obj_term->get_temp()->temp);
+      }
+
+      QuadCall *call_quad =
+          new QuadCall(call_node, nullptr, call_node->id, obj_term, args, new set<Temp *>(), use_call);
+
       set<Temp *> *def_call = new set<Temp *>();
       def_call->insert(temp_dst->temp);
-      set<Temp *> *use_call = new set<Temp *>(*call_quad->use);
-      QuadMoveCall *move_call = new QuadMoveCall(node, temp_dst, call_quad, def_call, use_call);
+
+      QuadMoveCall *move_call =
+          new QuadMoveCall(node, temp_dst, call_quad, def_call, use_call);
       result->push_back(move_call);
+
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
@@ -335,14 +395,38 @@ void Tree2Quad::visit(Move *node) {
 
     // Handle move extcall: temp <- extcall
     if (node->src->getTreeKind() == Kind::EXTCALL) {
-      node->src->accept(*this);
-      vector<QuadStm *> *result = visit_result;
-      QuadExtCall *extcall_quad = dynamic_cast<QuadExtCall *>(result->back());
+      ExtCall *extcall_node = static_cast<ExtCall *>(node->src);
+      vector<QuadStm *> *result = new vector<QuadStm *>();
+
+      // Evaluate arguments first
+      vector<QuadTerm *> *args = new vector<QuadTerm *>();
+      set<Temp *> *use_ext = new set<Temp *>();
+      if (extcall_node->args) {
+        for (Exp *arg : *(extcall_node->args)) {
+          arg->accept(*this);
+          args->push_back(output_term);
+          if (visit_result) {
+            result->insert(result->end(), visit_result->begin(), visit_result->end());
+          }
+          if (output_term->kind == QuadTermKind::TEMP) {
+            use_ext->insert(output_term->get_temp()->temp);
+          }
+        }
+      }
+
+      // def/use sets for the MoveExtCall
       set<Temp *> *def_ext = new set<Temp *>();
       def_ext->insert(temp_dst->temp);
-      set<Temp *> *use_ext = new set<Temp *>(*extcall_quad->use);
-      QuadMoveExtCall *move_ext = new QuadMoveExtCall(node, temp_dst, extcall_quad, def_ext, use_ext);
+
+      // Create an ExtCall quad just for printing
+      QuadExtCall *extcall_quad =
+          new QuadExtCall(extcall_node, nullptr, extcall_node->extfun, args,
+                          new set<Temp *>(), use_ext);
+
+      QuadMoveExtCall *move_ext =
+          new QuadMoveExtCall(node, temp_dst, extcall_quad, def_ext, use_ext);
       result->push_back(move_ext);
+
       visit_result = result;
       output_term = new QuadTerm(temp_dst);
       return;
@@ -416,9 +500,14 @@ void Tree2Quad::visit(Return *node) {
   CHECK_NULLPTR(node);
   CHECK_NULLPTR(node->exp);
 
+  vector<QuadStm *> *result = new vector<QuadStm *>();
+
   // Visit the return expression
   node->exp->accept(*this);
   QuadTerm *value = output_term;
+  if (visit_result) {
+    result->insert(result->end(), visit_result->begin(), visit_result->end());
+  }
 
   // Create def/use sets
   set<Temp *> *def = new set<Temp *>();
@@ -430,7 +519,8 @@ void Tree2Quad::visit(Return *node) {
 
   // Create and store the Return quad
   QuadReturn *return_quad = new QuadReturn(node, value, def, use);
-  visit_result = new vector<QuadStm *>(1, return_quad);
+  result->push_back(return_quad);
+  visit_result = result;
   output_term = nullptr;
 }
 
@@ -524,12 +614,33 @@ void Tree2Quad::visit(Mem *node) {
   CHECK_NULLPTR(node);
   CHECK_NULLPTR(node->mem);
 
+  vector<QuadStm *> *result = new vector<QuadStm *>();
+
   // Visit the memory address expression
   node->mem->accept(*this);
+  QuadTerm *addr_term = output_term;
+  if (visit_result) {
+    result->insert(result->end(), visit_result->begin(), visit_result->end());
+  }
 
-  // Store the address term for later use in Move or other operations
-  output_term = this->output_term;
-  visit_result = nullptr;
+  // Create a temp to hold the loaded value
+  TempExp *load_temp = new TempExp(node->type, temp_map->newtemp());
+
+  // Create def/use sets
+  set<Temp *> *def = new set<Temp *>();
+  def->insert(load_temp->temp);
+
+  set<Temp *> *use = new set<Temp *>();
+  if (addr_term->kind == QuadTermKind::TEMP) {
+    use->insert(addr_term->get_temp()->temp);
+  }
+
+  // Create the load quad
+  QuadLoad *load_quad = new QuadLoad(node, load_temp, addr_term, def, use);
+  result->push_back(load_quad);
+
+  visit_result = result;
+  output_term = new QuadTerm(load_temp);
 }
 
 void Tree2Quad::visit(TempExp *node) {
@@ -568,11 +679,16 @@ void Tree2Quad::visit(Call *node) {
   DEBUG_PRINT("Converting to Quad: Call");
   CHECK_NULLPTR(node);
 
+  vector<QuadStm *> *result = new vector<QuadStm *>();
+
   // Visit object
   QuadTerm *obj_term = nullptr;
   if (node->obj) {
     node->obj->accept(*this);
     obj_term = output_term;
+    if (visit_result) {
+      result->insert(result->end(), visit_result->begin(), visit_result->end());
+    }
   }
 
   // Visit arguments
@@ -583,6 +699,9 @@ void Tree2Quad::visit(Call *node) {
     for (Exp *arg : *(node->args)) {
       arg->accept(*this);
       args->push_back(output_term);
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
 
       if (output_term->kind == QuadTermKind::TEMP) {
         use->insert(output_term->get_temp()->temp);
@@ -590,12 +709,9 @@ void Tree2Quad::visit(Call *node) {
     }
   }
 
-  // Create a temp for the result
-  TempExp *result_temp = new TempExp(node->type, temp_map->newtemp());
-
   // Create def/use sets
   set<Temp *> *def = new set<Temp *>();
-  def->insert(result_temp->temp);
+  TempExp *result_temp = nullptr;
 
   if (obj_term && obj_term->kind == QuadTermKind::TEMP) {
     use->insert(obj_term->get_temp()->temp);
@@ -604,13 +720,16 @@ void Tree2Quad::visit(Call *node) {
   // Create and store the Call quad
   QuadCall *call_quad =
       new QuadCall(node, result_temp, node->id, obj_term, args, def, use);
-  visit_result = new vector<QuadStm *>(1, call_quad);
-  output_term = new QuadTerm(result_temp);
+  result->push_back(call_quad);
+  visit_result = result;
+  output_term = result_temp ? new QuadTerm(result_temp) : nullptr;
 }
 
 void Tree2Quad::visit(ExtCall *node) {
   DEBUG_PRINT("Converting to Quad: ExtCall");
   CHECK_NULLPTR(node);
+
+  vector<QuadStm *> *result = new vector<QuadStm *>();
 
   // Visit arguments
   vector<QuadTerm *> *args = new vector<QuadTerm *>();
@@ -620,6 +739,9 @@ void Tree2Quad::visit(ExtCall *node) {
     for (Exp *arg : *(node->args)) {
       arg->accept(*this);
       args->push_back(output_term);
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
 
       if (output_term->kind == QuadTermKind::TEMP) {
         use->insert(output_term->get_temp()->temp);
@@ -630,10 +752,13 @@ void Tree2Quad::visit(ExtCall *node) {
   // Create def/use sets
   set<Temp *> *def = new set<Temp *>();
 
-  // Only create a result temp if the function returns a value
-  // For now, we'll assume functions like "putch" don't return a value
+  // Only create a result temp if the external function returns a value
+  // Functions like "putch", "putint", "putarray" and "exit" are treated as
+  // returning void
   TempExp *result_temp = nullptr;
-  if (node->extfun != "putch") {
+  static const std::set<std::string> void_funcs{
+      "putch", "putint", "putarray", "exit"};
+  if (void_funcs.find(node->extfun) == void_funcs.end()) {
     result_temp = new TempExp(node->type, temp_map->newtemp());
     def->insert(result_temp->temp);
   }
@@ -641,7 +766,8 @@ void Tree2Quad::visit(ExtCall *node) {
   // Create and store the ExtCall quad
   QuadExtCall *extcall_quad =
       new QuadExtCall(node, result_temp, node->extfun, args, def, use);
-  visit_result = new vector<QuadStm *>(1, extcall_quad);
+  result->push_back(extcall_quad);
+  visit_result = result;
 
   // Set output_term to the result temp if it exists
   output_term = result_temp ? new QuadTerm(result_temp) : nullptr;
