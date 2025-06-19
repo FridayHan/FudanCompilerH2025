@@ -74,6 +74,8 @@ public:
     void print();
     vector<string> get_class_var_names(string class_name);
     vector<string> get_class_method_names(string class_name);
+    // 获取方法内局部变量名列表
+    vector<string> get_method_var_names(string class_name, string method_name);
     bool inherit_var(string parent_class, string child_class, string var_name);
     bool check_method_signature(string class1, string method1, string class2, string method2);
 
@@ -89,7 +91,6 @@ public:
 class AST_Name_Map_Visitor : public AST_Visitor {
 private:
     Name_Maps *name_maps; //this is the map for all names in the program
-    // TODO
     string current_class; // 当前正在访问的类名
     string current_method; // 当前正在访问的方法名
     bool in_formal; // 标记是否在处理形参
@@ -98,7 +99,6 @@ private:
 public:
     AST_Name_Map_Visitor() {
         name_maps = new Name_Maps();
-        // TODO
         current_class = "";
         current_method = "";
         in_formal = false;

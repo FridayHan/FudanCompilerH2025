@@ -31,8 +31,8 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
   DEBUG_PRINT("Visiting MainMethod");
   CHECK_NULLPTR(node);
   
-  string class_name = "MainClass";
-  string method_name = "^_main";
+  string class_name = "_^main^_";
+  string method_name = "main";
   
   current_class = class_name;
   current_method = method_name;
@@ -42,7 +42,7 @@ void AST_Name_Map_Visitor::visit(MainMethod *node) {
   
   current_formal_list.clear();
   
-  string return_var_name = "^_method_return";
+  string return_var_name = "_^return^_main";
   Type* main_type = new Type(node->getPos());
   Formal* return_formal = new Formal(node->getPos(), main_type, new IdExp(node->getPos(), return_var_name));
   
@@ -120,8 +120,7 @@ void AST_Name_Map_Visitor::visit(ClassDecl *node) {
                  << "' conflicts with inherited variable from parent class '" << parent_name << "'" << endl;
           }
         } else {
-          // 将父类变量继承到子类
-          name_maps->inherit_var(parent_name, class_name, var_name);
+          // 父类变量在名称映射中可见，子类无需再次存储
         }
       }
       
@@ -251,7 +250,7 @@ void AST_Name_Map_Visitor::visit(MethodDecl *node) {
   }
   
   // 添加方法返回值作为特殊形参
-  string return_var_name = "^_method_return";
+  string return_var_name = "_^return^_" + method_name;
   if (node->type) {
     // 存储方法的返回类型
     name_maps->add_method_type(current_class, method_name, node->type->clone());

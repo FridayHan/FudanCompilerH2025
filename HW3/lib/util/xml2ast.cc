@@ -299,7 +299,7 @@ Type* create_type(XMLElement* element) {
     IdExp *tk = create_leafnode<IdExp>(element, "Type", "typeKind", ATTR_TYPE::ID);
     if (tk->id == "CLASS") typeKind = TypeKind::CLASS;
     else if (tk->id == "INT") typeKind = TypeKind::INT;
-    else if (tk->id == "ARRAY") typeKind = TypeKind::ARRAY;
+    else if (tk->id == "ARRAY" || tk->id == "INTARRAY") typeKind = TypeKind::ARRAY;
     else {
         cerr << "Error: Unknown TypeKind!" << endl;
         return nullptr;
