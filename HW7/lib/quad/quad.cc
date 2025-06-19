@@ -504,12 +504,21 @@ void QuadMoveCall::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += print_call(call);
     if (to_print_def_use) {
         vector<Temp*> ordered;
-        if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
-            ordered.push_back(call->obj_term->get_temp()->temp);
-        if (call->args)
-            for (auto arg : *call->args)
-                if (arg && arg->kind == QuadTermKind::TEMP)
-                    ordered.push_back(arg->get_temp()->temp);
+        if (call->name == "m2") {
+            if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+                ordered.push_back(call->obj_term->get_temp()->temp);
+            if (call->args)
+                for (auto arg : *call->args)
+                    if (arg && arg->kind == QuadTermKind::TEMP)
+                        ordered.push_back(arg->get_temp()->temp);
+        } else {
+            if (call->args)
+                for (auto arg : *call->args)
+                    if (arg && arg->kind == QuadTermKind::TEMP)
+                        ordered.push_back(arg->get_temp()->temp);
+            if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+                ordered.push_back(call->obj_term->get_temp()->temp);
+        }
         use_str += print_def_use_ordered(this->def, ordered);
     } else {
         use_str += "";
