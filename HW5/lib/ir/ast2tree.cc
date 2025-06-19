@@ -6,11 +6,11 @@
 #include "temp.hh"
 #include "treep.hh"
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
-#include <functional>
 
 using namespace std;
 
@@ -133,7 +133,8 @@ Class_table *generate_class_table(AST_Semant_Map *semant_map) {
 }
 
 Method_var_table *generate_method_var_table(const string &cls,
-                                            const string &method, Name_Maps *nameMaps,
+                                            const string &method,
+                                            Name_Maps *nameMaps,
                                             Temp_map *tempMap) {
   auto *table = new Method_var_table(cls, method, tempMap);
 
@@ -288,22 +289,29 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
   Tr_cx *cond = expResult->unCx(tempMap);
   stmts->push_back(cond->stm);
 
-  Label *thenLabel = tempMap->newlabel();
-  cond->true_list->patch(thenLabel);
-  stmts->push_back(new tree::LabelStm(thenLabel));
   node->stm1->accept(*this);
-  stmts->push_back(dynamic_cast<tree::Stm *>(visit_tree_result));
+  auto *thenStm = dynamic_cast<tree::Stm *>(visit_tree_result);
 
-  Label *endLabel = tempMap->newlabel();
-  stmts->push_back(new tree::Jump(endLabel));
-
-  Label *elseLabel = tempMap->newlabel();
-  cond->false_list->patch(elseLabel);
-  stmts->push_back(new tree::LabelStm(elseLabel));
+  tree::Stm *elseStm = nullptr;
   if (node->stm2) {
     node->stm2->accept(*this);
-    stmts->push_back(dynamic_cast<tree::Stm *>(visit_tree_result));
+    elseStm = dynamic_cast<tree::Stm *>(visit_tree_result);
   }
+
+  Label *thenLabel = tempMap->newlabel();
+  Label *elseLabel = tempMap->newlabel();
+  Label *endLabel = tempMap->newlabel();
+
+  cond->true_list->patch(thenLabel);
+  cond->false_list->patch(elseLabel);
+
+  stmts->push_back(new tree::LabelStm(thenLabel));
+  stmts->push_back(thenStm);
+  stmts->push_back(new tree::Jump(endLabel));
+
+  stmts->push_back(new tree::LabelStm(elseLabel));
+  if (elseStm)
+    stmts->push_back(elseStm);
 
   stmts->push_back(new tree::LabelStm(endLabel));
 
@@ -318,18 +326,19 @@ void ASTToTreeVisitor::visit(fdmj::While *node) {
 
   auto *stmts = new vector<tree::Stm *>();
 
+  node->exp->accept(*this);
+  Tr_cx *cond = expResult->unCx(tempMap);
+
   Label *startLabel = tempMap->newlabel();
   Label *bodyLabel = tempMap->newlabel();
   Label *exitLabel = tempMap->newlabel();
   loopLabels.push({startLabel, exitLabel});
 
   stmts->push_back(new tree::LabelStm(startLabel));
-
-  node->exp->accept(*this);
-  Tr_cx *cond = expResult->unCx(tempMap);
   stmts->push_back(cond->stm);
 
   cond->true_list->patch(bodyLabel);
+  cond->false_list->patch(exitLabel);
   stmts->push_back(new tree::LabelStm(bodyLabel));
 
   node->stm->accept(*this);
@@ -494,9 +503,11 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
     auto *rightOperand = expResult->unEx(tempMap)->exp;
 
     if (leftOperand->type == tree::Type::PTR)
-      expResult = new Tr_ex(createArrayBinaryOp(leftOperand, rightOperand, op, tempMap));
+      expResult = new Tr_ex(
+          createArrayBinaryOp(leftOperand, rightOperand, op, tempMap));
     else
-      expResult = new Tr_ex(new tree::Binop(tree::Type::INT, op, leftOperand, rightOperand));
+      expResult = new Tr_ex(
+          new tree::Binop(tree::Type::INT, op, leftOperand, rightOperand));
   } else if (logicOps.count(op)) {
     Patch_list *trueList = new Patch_list();
     Patch_list *falseList = new Patch_list();
@@ -537,9 +548,9 @@ void ASTToTreeVisitor::visit(fdmj::BinaryOp *node) {
     node->right->accept(*this);
     auto *rightExpResult = expResult->unEx(tempMap);
 
-    expResult =
-        new Tr_cx(trueList, falseList,
-                  new tree::Cjump(op, leftExp->exp, rightExpResult->exp, trueLabel, falseLabel));
+    expResult = new Tr_cx(trueList, falseList,
+                          new tree::Cjump(op, leftExp->exp, rightExpResult->exp,
+                                          trueLabel, falseLabel));
   } else {
     cerr << "cerr: wrong operation in BinaryOp\n";
   }
@@ -834,8 +845,7 @@ ASTToTreeVisitor::generate_mainmethod_body(fdmj::MainMethod *node,
   return blocks;
 }
 
-vector<tree::Stm *> *
-ASTToTreeVisitor::generate_local_var_decls() {
+vector<tree::Stm *> *ASTToTreeVisitor::generate_local_var_decls() {
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
 
   Name_Maps *nameMaps = semantMap->getNameMaps();
@@ -888,7 +898,8 @@ void ASTToTreeVisitor::handle_int_decl(tree::Exp *target, fdmj::VarDecl *decl) {
   }
 }
 
-void ASTToTreeVisitor::handle_array_decl(tree::Exp *target, fdmj::VarDecl *decl) {
+void ASTToTreeVisitor::handle_array_decl(tree::Exp *target,
+                                         fdmj::VarDecl *decl) {
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
   int len = decl->type->arity->val;
   if (auto **inits = get_if<vector<IntExp *> *>(&decl->init); inits && *inits) {
@@ -896,8 +907,8 @@ void ASTToTreeVisitor::handle_array_decl(tree::Exp *target, fdmj::VarDecl *decl)
   }
   stmts->push_back(new tree::Move(
       target, new tree::ExtCall(
-                tree::Type::PTR, "malloc",
-                new vector<tree::Exp *>(1, new tree::Const((len + 1) * 4)))));
+                  tree::Type::PTR, "malloc",
+                  new vector<tree::Exp *>(1, new tree::Const((len + 1) * 4)))));
   stmts->push_back(new tree::Move(new tree::Mem(tree::Type::INT, target),
                                   new tree::Const(len)));
   if (auto **inits = get_if<vector<IntExp *> *>(&decl->init); inits && *inits) {
@@ -913,7 +924,8 @@ void ASTToTreeVisitor::handle_array_decl(tree::Exp *target, fdmj::VarDecl *decl)
   visit_tree_result = new tree::Seq(stmts);
 }
 
-void ASTToTreeVisitor::handle_class_decl(tree::Exp *target, fdmj::VarDecl *decl) {
+void ASTToTreeVisitor::handle_class_decl(tree::Exp *target,
+                                         fdmj::VarDecl *decl) {
   vector<tree::Stm *> *stmts = new vector<tree::Stm *>();
   stmts->push_back(new tree::Move(
       target,
@@ -923,7 +935,8 @@ void ASTToTreeVisitor::handle_class_decl(tree::Exp *target, fdmj::VarDecl *decl)
   string cls = decl->type->cid->id;
   Name_Maps *nameMaps = semantMap->getNameMaps();
   for (auto &[field, offset] : classTable->var_pos_map) {
-    auto *fieldDecl = nameMaps->get_class_var(get_var_cname(cls, field, nameMaps), field);
+    auto *fieldDecl =
+        nameMaps->get_class_var(get_var_cname(cls, field, nameMaps), field);
     if (fieldDecl->type->typeKind == fdmj::TypeKind::CLASS)
       continue;
     tree::Binop *addr =
@@ -950,8 +963,8 @@ void ASTToTreeVisitor::handle_class_decl(tree::Exp *target, fdmj::VarDecl *decl)
       if (!done.insert(m).second)
         continue;
       int offset = classTable->get_method_pos(m);
-      tree::Binop *addr =
-          new tree::Binop(tree::Type::PTR, "+", target, new tree::Const(offset));
+      tree::Binop *addr = new tree::Binop(tree::Type::PTR, "+", target,
+                                          new tree::Const(offset));
       stmts->push_back(
           new tree::Move(new tree::Mem(tree::Type::PTR, addr),
                          new tree::Name(new tree::String_Label(c + "^" + m))));
@@ -1027,8 +1040,8 @@ void ASTToTreeVisitor::buildMethodCall(fdmj::Exp *obj, fdmj::IdExp *name,
 
   Name_Maps *nameMaps = semantMap->getNameMaps();
   string def_cls = get_method_cname(class_name, method_name, nameMaps);
-  Formal *ret_formal =
-      nameMaps->get_method_formal(def_cls, method_name, "_^return^_" + method_name);
+  Formal *ret_formal = nameMaps->get_method_formal(def_cls, method_name,
+                                                   "_^return^_" + method_name);
   tree::Type ret_type = get_var_type(ret_formal->type);
 
   auto *call = new tree::Call(ret_type, method_name, method_ptr, args);
@@ -1114,18 +1127,18 @@ static tree::TempExp *allocateArray(tree::Exp *lengthExpr, Temp_map *temp_map,
   auto *array = new tree::TempExp(tree::Type::PTR, temp_map->newtemp());
   stmts->push_back(new tree::Move(array, call));
   stmts->push_back(
-      new tree::Move(new tree::Mem(tree::Type::INT, array), lengthExpr));
+      new tree::Move(new tree::Mem(tree::Type::PTR, array), lengthExpr));
   return array;
 }
 
 static void appendArrayLoop(vector<tree::Stm *> *stmts, tree::Exp *src,
-                            tree::TempExp *dst, const string &op,
-                            Temp_map *temp_map) {
+                            tree::TempExp *dst, tree::Exp *len,
+                            const string &op, Temp_map *temp_map) {
   auto *offset = new tree::TempExp(tree::Type::INT, temp_map->newtemp());
   auto *endOff = new tree::TempExp(tree::Type::INT, temp_map->newtemp());
   auto *bytes = new tree::Binop(
       tree::Type::INT, "*",
-      new tree::Binop(tree::Type::INT, "+", dst, new tree::Const(1)),
+      new tree::Binop(tree::Type::INT, "+", len, new tree::Const(1)),
       new tree::Const(4));
 
   stmts->push_back(new tree::Move(offset, new tree::Const(4)));
@@ -1137,11 +1150,12 @@ static void appendArrayLoop(vector<tree::Stm *> *stmts, tree::Exp *src,
   stmts->push_back(new tree::Cjump("<", offset, endOff, lbl1, lbl2));
   stmts->push_back(new tree::LabelStm(lbl1));
 
-  auto *leftExp = new tree::Mem(tree::Type::INT,
-                           new tree::Binop(tree::Type::PTR, "+", src, offset));
-  auto *rightExpResult = new tree::Mem(tree::Type::INT,
-                           new tree::Binop(tree::Type::PTR, "+", dst, offset));
-  auto *opExpr = new tree::Binop(tree::Type::INT, op, new tree::Const(0), leftExp);
+  auto *leftExp = new tree::Mem(
+      tree::Type::INT, new tree::Binop(tree::Type::PTR, "+", src, offset));
+  auto *rightExpResult = new tree::Mem(
+      tree::Type::PTR, new tree::Binop(tree::Type::PTR, "+", dst, offset));
+  auto *opExpr =
+      new tree::Binop(tree::Type::INT, op, new tree::Const(0), leftExp);
   stmts->push_back(new tree::Move(rightExpResult, opExpr));
 
   stmts->push_back(
@@ -1158,7 +1172,7 @@ tree::Eseq *UnOp_Array(tree::Exp *srcArray, const string &opType,
   auto *seqStmts = new vector<tree::Stm *>{new tree::Move(lenTmp, fetchLen)};
 
   auto *newArr = allocateArray(lenTmp, temp_map, seqStmts);
-  appendArrayLoop(seqStmts, srcArray, newArr, opType, temp_map);
+  appendArrayLoop(seqStmts, srcArray, newArr, lenTmp, opType, temp_map);
 
   auto *seq = new tree::Seq(seqStmts);
   return new tree::Eseq(tree::Type::PTR, seq, newArr);
@@ -1221,8 +1235,8 @@ void ASTToTreeVisitor::generate_call_expr(fdmj::Exp *object,
   }
 
   string implClass = get_method_cname(className, methodName, nameMaps);
-  Formal *returnFormal =
-      nameMaps->get_method_formal(implClass, methodName, "_^return^_" + methodName);
+  Formal *returnFormal = nameMaps->get_method_formal(implClass, methodName,
+                                                     "_^return^_" + methodName);
   auto returnType = get_var_type(returnFormal->type);
 
   expResult = new Tr_ex(new tree::Call(returnType, methodName, vptr, params));
