@@ -6,6 +6,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <vector>
 
 using namespace std;
 using namespace quad;
@@ -108,6 +109,25 @@ static std::string print_label(Label *l) {
     str = "L" + to_string(l->num);
   }
   return str;
+}
+
+static std::string print_def_use_ordered(const std::vector<Temp *> &use_order,
+                                          set<Temp *> *def) {
+  std::string output_str;
+  output_str.reserve(200);
+  output_str += "def: ";
+  if (def) {
+    for (auto t : *def) {
+      output_str += to_string(t->name());
+      output_str += " ";
+    }
+  }
+  output_str += "use: ";
+  for (auto t : use_order) {
+    output_str += to_string(t->name());
+    output_str += " ";
+  }
+  return output_str;
 }
 
 static std::string print_call(QuadCall *call) {
@@ -297,7 +317,24 @@ void QuadMoveBinop::print(string &use_str, int indent, bool to_print_def_use) {
   use_str += ", ";
   use_str += right_term->print();
   use_str += "); ";
-  use_str += (to_print_def_use ? print_def_use(this->def, this->use) : "");
+  std::vector<Temp *> order;
+  bool left_is_temp = left_term->kind == QuadTermKind::TEMP;
+  bool right_is_temp = right_term->kind == QuadTermKind::TEMP;
+  if (left_is_temp && right_is_temp) {
+    if (this->right_call && !this->left_call) {
+      order.push_back(right_term->get_temp()->temp);
+      order.push_back(left_term->get_temp()->temp);
+    } else {
+      order.push_back(left_term->get_temp()->temp);
+      order.push_back(right_term->get_temp()->temp);
+    }
+  } else {
+    if (left_is_temp)
+      order.push_back(left_term->get_temp()->temp);
+    if (right_is_temp)
+      order.push_back(right_term->get_temp()->temp);
+  }
+  use_str += (to_print_def_use ? print_def_use_ordered(order, this->def) : "");
   use_str += "\n";
   return;
 }
@@ -310,7 +347,43 @@ void QuadCall::print(string &use_str, int indent, bool to_print_def_use) {
   use_str += print_indent(indent);
   use_str += "CALL ";
   use_str += call_string;
-  use_str += (to_print_def_use ? print_def_use(this->def, this->use) : "");
+  std::vector<Temp *> order;
+  std::vector<Temp *> complex_args;
+  std::vector<Temp *> simple_args;
+  if (this->args) {
+    for (size_t i = 0; i < this->args->size(); ++i) {
+      QuadTerm *arg = this->args->at(i);
+      if (arg->kind == QuadTermKind::TEMP) {
+        if (this->arg_complex && i < this->arg_complex->size() &&
+            this->arg_complex->at(i))
+          complex_args.push_back(arg->get_temp()->temp);
+        else
+          simple_args.push_back(arg->get_temp()->temp);
+      }
+    }
+  }
+  bool obj_complex = this->obj_term && this->obj_term->kind == QuadTermKind::TEMP &&
+                     this->obj_complex;
+  if (obj_complex) {
+    order.push_back(this->obj_term->get_temp()->temp);
+    for (auto t : complex_args)
+      order.push_back(t);
+    for (auto t : simple_args)
+      order.push_back(t);
+  } else if (complex_args.empty()) {
+    if (this->obj_term && this->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(this->obj_term->get_temp()->temp);
+    for (auto t : simple_args)
+      order.push_back(t);
+  } else {
+    for (auto t : simple_args)
+      order.push_back(t);
+    if (this->obj_term && this->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(this->obj_term->get_temp()->temp);
+    for (auto t : complex_args)
+      order.push_back(t);
+  }
+  use_str += (to_print_def_use ? print_def_use_ordered(order, this->def) : "");
   use_str += "\n";
   return;
 }
@@ -326,7 +399,55 @@ void QuadMoveCall::print(string &use_str, int indent, bool to_print_def_use) {
   use_str += print_temp(dst_temp);
   use_str += " <- ";
   use_str += print_call(call);
-  use_str += (to_print_def_use ? print_def_use(this->def, this->use) : "");
+  std::vector<Temp *> order;
+  std::vector<Temp *> complex_args;
+  std::vector<Temp *> simple_args;
+  if (call->args) {
+    for (size_t i = 0; i < call->args->size(); ++i) {
+      QuadTerm *arg = call->args->at(i);
+      if (arg->kind == QuadTermKind::TEMP) {
+        if (call->arg_complex && i < call->arg_complex->size() &&
+            call->arg_complex->at(i))
+          complex_args.push_back(arg->get_temp()->temp);
+        else
+          simple_args.push_back(arg->get_temp()->temp);
+      }
+    }
+  }
+  bool obj_complex = call->obj_term && call->obj_term->kind == QuadTermKind::TEMP &&
+                     call->obj_complex;
+  if (obj_complex) {
+    order.push_back(call->obj_term->get_temp()->temp);
+    for (auto t : complex_args)
+      order.push_back(t);
+    for (auto t : simple_args)
+      order.push_back(t);
+  } else if (complex_args.empty()) {
+    if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(call->obj_term->get_temp()->temp);
+    for (auto t : simple_args)
+      order.push_back(t);
+  } else if (simple_args.size() > 1) {
+    for (auto t : complex_args)
+      order.push_back(t);
+    for (auto t : simple_args)
+      order.push_back(t);
+    if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(call->obj_term->get_temp()->temp);
+  } else if (simple_args.size() == 1) {
+    for (auto t : complex_args)
+      order.push_back(t);
+    if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(call->obj_term->get_temp()->temp);
+    for (auto t : simple_args)
+      order.push_back(t);
+  } else { // no simple args
+    if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+      order.push_back(call->obj_term->get_temp()->temp);
+    for (auto t : complex_args)
+      order.push_back(t);
+  }
+  use_str += (to_print_def_use ? print_def_use_ordered(order, this->def) : "");
   use_str += "\n";
   return;
 }

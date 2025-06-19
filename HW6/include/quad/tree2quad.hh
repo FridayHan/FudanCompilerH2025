@@ -3,6 +3,7 @@
 
 #include "quad.hh"
 #include "treep.hh"
+#include <set>
 
 using namespace tree;
 using namespace quad;
@@ -16,6 +17,10 @@ public:
                       // reset at each FuncDecl (taking in the last temp & label
                       // numbers used)
   QuadFuncDecl *current_func_decl;
+
+  // track temps defined by complex expressions for call argument ordering
+  std::set<int> complex_defs;
+  std::set<int> call_defs;
 
   // You may add other "visitor global variables" here
 
