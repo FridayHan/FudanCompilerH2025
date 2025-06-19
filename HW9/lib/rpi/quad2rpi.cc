@@ -86,77 +86,58 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
 
 string convert(QuadFuncDecl* func, DataFlowInfo *dfi, Color *color, int indent) {
     DEBUG_PRINT2("[convert Func] 处理函数:", func->funcname);
-    string result; 
+    string result;
     current_funcname = func->funcname;
     string indent_str(indent, ' ');
-    
+
     result += "@ Here's function: " + func->funcname + "\n\n";
-    
+
     string func_label = normalizeName(func->funcname);
     result += ".balign 4\n";
     result += ".global " + func_label + "\n";
     result += ".section .text\n\n";
     result += func_label + ":\n";
     current_funcname = func_label;
-    
+
     result += indent_str + "push {r4-r10, fp, lr}\n";
-    result += indent_str + "add fp, sp, #32\n";
-    
-    // 收集所有跳转目标，确保生成所有需要的标签
-    set<string> all_jump_targets;
-    for (auto block : *func->quadblocklist) {
-        for (auto stmt : *block->quadlist) {
-            if (stmt->kind == QuadKind::JUMP) {
-                QuadJump* jump = static_cast<QuadJump*>(stmt);
-                all_jump_targets.insert(jump->label->str());
-            } else if (stmt->kind == QuadKind::CJUMP) {
-                QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-                all_jump_targets.insert(cjump->t->str());
-                all_jump_targets.insert(cjump->f->str());
+    result += indent_str + "add fp, sp, #" + to_string(BYTES_FOR_CALLEE_REGS - 4) + "\n";
+
+    int spill_bytes = color->spills.size() * Compiler_Config::get("int_length");
+    if (spill_bytes > 0)
+        result += indent_str + "sub sp, sp, #" + to_string(spill_bytes) + "\n";
+
+    vector<QuadStm*> *stms = func->quadblocklist->at(0)->quadlist;
+    map<string,bool> emitted;
+    for(size_t i=0;i<stms->size();++i){
+        QuadStm* stmt = stms->at(i);
+        DEBUG_PRINT2("[convert Func] 处理语句 kind:", (int)stmt->kind);
+
+        if(stmt->kind==QuadKind::LABEL){
+            auto lab = static_cast<QuadLabel*>(stmt);
+            string lname = lab->label->str();
+            if(!emitted[lname]){
+                result += current_funcname + "$" + lname + ": \n";
+                emitted[lname]=true;
             }
+            continue;
         }
-    }
-    
-    // 跟踪已生成的标签
-    map<string, bool> label_emitted;
-    
-    for (auto block : *func->quadblocklist) {
-        string block_label = block->entry_label->str();
-        DEBUG_PRINT2("[convert Func] 处理基本块:", block_label);
-        // 生成基本块标签
-        if (!label_emitted[block_label]) {
-            result += current_funcname + "$" + block_label + ": \n";
-            label_emitted[block_label] = true;
-        }
-        
-        for (auto stmt : *block->quadlist) {
-            DEBUG_PRINT2("[convert Func] 处理语句 kind:", (int)stmt->kind);
-            // 在处理每个语句前，检查是否需要生成跳转目标标签
-            if (stmt->kind == QuadKind::CJUMP) {
-                QuadCJump* cjump = static_cast<QuadCJump*>(stmt);
-                // 处理CJUMP指令
-                result += convertQuadStm(stmt, color, indent, label_emitted);
-                
-                // CJUMP后立即生成false分支标签
-                string false_label = cjump->f->str();
-                if (!label_emitted[false_label]) {
-                    result += current_funcname + "$" + false_label + ": \n";
-                    label_emitted[false_label] = true;
-                }
-            } else {
-                result += convertQuadStm(stmt, color, indent, label_emitted);
+
+        if(stmt->kind==QuadKind::JUMP){
+            auto j = static_cast<QuadJump*>(stmt);
+            string target = j->label->str();
+            bool next_is_target = false;
+            if(i+1 < stms->size() && stms->at(i+1)->kind==QuadKind::LABEL){
+                auto nl = static_cast<QuadLabel*>(stms->at(i+1));
+                next_is_target = (nl->label->str() == target);
             }
+            if(!next_is_target)
+                result += indent_str + "b " + current_funcname + "$" + target + "\n";
+            continue;
         }
+
+        result += convertQuadStm(stmt, color, indent, emitted);
     }
-    
-    // 确保所有跳转目标标签都被生成
-    for (const string& target : all_jump_targets) {
-        if (!label_emitted[target]) {
-            result += current_funcname + "$" + target + ": \n";
-            label_emitted[target] = true;
-        }
-    }
-    
+
     return result;
 }
 
@@ -310,13 +291,6 @@ string convertQuadStm(QuadStm* stmt, Color* color, int indent, map<string, bool>
             else condition = "eq";
             
             result += indent_str + "b" + condition + " " + current_funcname + "$" + cjump->t->str() + "\n";
-            
-            // 为false分支生成标签
-            string false_label = cjump->f->str();
-            if (!label_emitted[false_label]) {
-                result += current_funcname + "$" + false_label + ": \n";
-                label_emitted[false_label] = true;
-            }
             break;
         }
         
