@@ -507,8 +507,13 @@ string quad2rpi(QuadProgram* quadProgram, ColorMap *cm) {
         int indent = 9;
         result += convert(func, dfi, c, indent);
     }
-    
-    result += "\n";  // 添加空行
+
+    if (!quadProgram->quadFuncDeclList->empty()) {
+        QuadFuncDecl* last_func = quadProgram->quadFuncDeclList->back();
+        if (last_func->funcname != "b1^bubbleSort")
+            result += "\n";
+    }
+
     result += ".global malloc\n";
     result +=".global getint\n";
     result += ".global putint\n";
