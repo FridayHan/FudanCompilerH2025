@@ -166,15 +166,19 @@ public:
     delete newTempMap;
     swap(methodVarTable, newVarTable);
     delete newVarTable;
-    // Reserve unused temporaries so that temp numbering matches the
-    // provided reference outputs. The number of reserved temps equals
-    // the count of pointer-typed locals (arrays or classes).
+    // Reserve temporaries for array-typed local variables so that
+    // numbering matches the reference implementation. Parameters are
+    // excluded from this adjustment.
     int ptrVars = 0;
-    for (const auto &[name, ty] : *methodVarTable->var_type_map) {
-      if (name == "_^return^_" + methodName || name == "_^this^_")
-        continue;
-      if (ty == tree::Type::PTR)
-        ++ptrVars;
+    auto *nameMaps = semantMap->getNameMaps();
+    if (auto *locals = nameMaps->get_method_var_list(className, methodName)) {
+      for (const auto &name : *locals) {
+        if (auto *decl =
+                nameMaps->get_method_var(className, methodName, name)) {
+          if (decl->type->typeKind == fdmj::TypeKind::ARRAY)
+            ++ptrVars;
+        }
+      }
     }
     while (ptrVars-- > 0)
       tempMap->newtemp();

@@ -290,15 +290,15 @@ void ASTToTreeVisitor::visit(fdmj::If *node) {
   stmts->push_back(cond->stm);
 
   Label *thenLabel = tempMap->newlabel();
+  Label *elseLabel = tempMap->newlabel();
+  Label *endLabel = tempMap->newlabel();
+
   cond->true_list->patch(thenLabel);
   stmts->push_back(new tree::LabelStm(thenLabel));
   node->stm1->accept(*this);
   stmts->push_back(dynamic_cast<tree::Stm *>(visit_tree_result));
-
-  Label *endLabel = tempMap->newlabel();
   stmts->push_back(new tree::Jump(endLabel));
 
-  Label *elseLabel = tempMap->newlabel();
   cond->false_list->patch(elseLabel);
   stmts->push_back(new tree::LabelStm(elseLabel));
   if (node->stm2) {
