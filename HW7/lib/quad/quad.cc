@@ -442,7 +442,16 @@ void QuadMoveBinop::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += ", ";
     use_str += right_term->print();
     use_str += "); ";
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (left_term && left_term->kind == QuadTermKind::TEMP)
+            ordered.push_back(left_term->get_temp()->temp);
+        if (right_term && right_term->kind == QuadTermKind::TEMP)
+            ordered.push_back(right_term->get_temp()->temp);
+        use_str += print_def_use_ordered(this->def, ordered);
+    } else {
+        use_str += "";
+    }
     use_str += "\n";
     return ;
 }
@@ -493,7 +502,18 @@ void QuadMoveCall::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += print_temp(dst_temp);
     use_str += " <- ";
     use_str += print_call(call);
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+            ordered.push_back(call->obj_term->get_temp()->temp);
+        if (call->args)
+            for (auto arg : *call->args)
+                if (arg && arg->kind == QuadTermKind::TEMP)
+                    ordered.push_back(arg->get_temp()->temp);
+        use_str += print_def_use_ordered(this->def, ordered);
+    } else {
+        use_str += "";
+    }
     use_str += "\n";
     return;
 }
