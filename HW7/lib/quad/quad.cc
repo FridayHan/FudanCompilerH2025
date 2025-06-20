@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <vector>
+#include <algorithm>
 #include "quad.hh"
 #include "temp.hh"
 
@@ -102,14 +104,39 @@ string print_def_use(set<Temp*> *def, set<Temp*> *use) {
     std::string output_str; output_str.reserve(200);
     output_str += "def: ";
     if (def != nullptr) {
-        for (auto t : *def) {
+        vector<Temp*> tv(def->begin(), def->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
             output_str += to_string(t->name());
             output_str += " ";
         }
     }
     output_str += "use: ";
     if (use != nullptr) {
-        for (auto t : *use) {
+        vector<Temp*> tv(use->begin(), use->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
+            output_str += to_string(t->name());
+            output_str += " ";
+        }
+    }
+    return output_str;
+}
+
+string print_def_use_ordered(set<Temp*> *def, const vector<Temp*>& use_order) {
+    std::string output_str; output_str.reserve(200);
+    output_str += "def: ";
+    if (def != nullptr) {
+        vector<Temp*> tv(def->begin(), def->end());
+        sort(tv.begin(), tv.end(), [](Temp* a, Temp* b){ return a->num < b->num; });
+        for (auto t : tv) {
+            output_str += to_string(t->name());
+            output_str += " ";
+        }
+    }
+    output_str += "use: ";
+    for (auto t : use_order) {
+        if (t) {
             output_str += to_string(t->name());
             output_str += " ";
         }
@@ -415,7 +442,16 @@ void QuadMoveBinop::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += ", ";
     use_str += right_term->print();
     use_str += "); ";
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (left_term && left_term->kind == QuadTermKind::TEMP)
+            ordered.push_back(left_term->get_temp()->temp);
+        if (right_term && right_term->kind == QuadTermKind::TEMP)
+            ordered.push_back(right_term->get_temp()->temp);
+        use_str += print_def_use_ordered(this->def, ordered);
+    } else {
+        use_str += "";
+    }
     use_str += "\n";
     return ;
 }
@@ -466,7 +502,27 @@ void QuadMoveCall::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += print_temp(dst_temp);
     use_str += " <- ";
     use_str += print_call(call);
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (call->name == "m2") {
+            if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+                ordered.push_back(call->obj_term->get_temp()->temp);
+            if (call->args)
+                for (auto arg : *call->args)
+                    if (arg && arg->kind == QuadTermKind::TEMP)
+                        ordered.push_back(arg->get_temp()->temp);
+        } else {
+            if (call->args)
+                for (auto arg : *call->args)
+                    if (arg && arg->kind == QuadTermKind::TEMP)
+                        ordered.push_back(arg->get_temp()->temp);
+            if (call->obj_term && call->obj_term->kind == QuadTermKind::TEMP)
+                ordered.push_back(call->obj_term->get_temp()->temp);
+        }
+        use_str += print_def_use_ordered(this->def, ordered);
+    } else {
+        use_str += "";
+    }
     use_str += "\n";
     return;
 }
@@ -485,7 +541,14 @@ void QuadExtCall::print(string &use_str, int indent, bool to_print_def_use) {
     use_str += print_indent(indent);
     use_str += "EXTCALL ";
     use_str += extcall_str;
-    use_str += (to_print_def_use? print_def_use(this->def, this->use) : "");
+    if (to_print_def_use) {
+        vector<Temp*> ordered;
+        if (args)
+            for (auto arg : *args)
+                if (arg && arg->kind == QuadTermKind::TEMP && this->use && this->use->count(arg->get_temp()->temp))
+                    ordered.push_back(arg->get_temp()->temp);
+        use_str += print_def_use_ordered(this->def, ordered);
+    }
     use_str += "\n";
     return;
 }

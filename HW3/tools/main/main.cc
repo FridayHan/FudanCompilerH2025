@@ -43,7 +43,7 @@ int main(int argc, const char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    cout << "Convert AST  to XML..." << endl;
+    cout << "Convert AST to XML..." << endl;
     XMLDocument *x = ast2xml(root, nullptr, with_location_info, false); // no semant info yet
     x->SaveFile(file_ast.c_str());
     std::cout << "Writing AST to file: " << file_ast << std::endl;
@@ -73,7 +73,7 @@ int main(int argc, const char *argv[]) {
     AST_Semant_Map *semant_map = semant_analyze(root); 
 
     cout << "Convert AST to XML with Semantic Info..." << endl;
-    x = ast2xml(root, semant_map, with_location_info, true); // no semant info yet
+    x = ast_with_maps2xml(root, name_maps, semant_map, with_location_info, true);
 
     if (x->Error()) {
         std::cout << "AST is not valid when converting from AST with Semant Info!" << endl;
