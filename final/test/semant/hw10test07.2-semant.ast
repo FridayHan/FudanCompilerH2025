@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDMJAST>
+    <NameMaps>
+        <Class name="_^main^_">
+            <Method name="main">
+                <Formal id="_^return^_main">
+                    <Formal>
+                        <Type typeKind="INT"/>
+                        <IdExp id="_^return^_main"/>
+                    </Formal>
+                </Formal>
+                <Var id="i">
+                    <VarDecl>
+                        <Type typeKind="INT"/>
+                        <IdExp id="i"/>
+                    </VarDecl>
+                </Var>
+            </Method>
+        </Class>
+    </NameMaps>
+    <Program>
+        <MainMethod>
+            <VarDeclList>
+                <VarDecl>
+                    <Type typeKind="INT"/>
+                    <IdExp id="i"/>
+                </VarDecl>
+            </VarDeclList>
+            <StmList>
+                <Assign>
+                    <IdExp s_kind="Value" typeKind="INT" lvalue="true" id="i"/>
+                    <BinaryOp s_kind="Value" typeKind="INT" lvalue="false">
+                        <BinaryOp s_kind="Value" typeKind="INT" lvalue="false">
+                            <BinaryOp s_kind="Value" typeKind="INT" lvalue="false">
+                                <BinaryOp s_kind="Value" typeKind="INT" lvalue="false">
+                                    <IntExp s_kind="Value" typeKind="INT" lvalue="false" val="1"/>
+                                    <OpExp op="+"/>
+                                    <IntExp s_kind="Value" typeKind="INT" lvalue="false" val="1"/>
+                                </BinaryOp>
+                                <OpExp op="+"/>
+                                <IntExp s_kind="Value" typeKind="INT" lvalue="false" val="1"/>
+                            </BinaryOp>
+                            <OpExp op="+"/>
+                            <IntExp s_kind="Value" typeKind="INT" lvalue="false" val="1"/>
+                        </BinaryOp>
+                        <OpExp op="+"/>
+                        <GetInt s_kind="Value" typeKind="INT" lvalue="false"/>
+                    </BinaryOp>
+                </Assign>
+                <Return>
+                    <IdExp s_kind="Value" typeKind="INT" lvalue="true" id="i"/>
+                </Return>
+            </StmList>
+        </MainMethod>
+        <ClassDeclList/>
+    </Program>
+</FDMJAST>
