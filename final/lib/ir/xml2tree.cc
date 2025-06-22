@@ -80,10 +80,10 @@ static Label * stringToLabel(const string& labelStr) {
     cout << "Converting string to label: " << labelStr << endl;
 #endif
     int labelId = stoi(labelStr);
-    if (labelId == -1) {
-        return temp_map->named_label(labelId);
-    }
-    return nullptr;
+    // Always return the corresponding label.  The previous code returned
+    // nullptr for any value other than -1, which caused segmentation faults
+    // when later passes accessed label pointers.
+    return temp_map->named_label(labelId);
 }
 
 static String_Label * stringToStringLabel(const string& labelStr) {
@@ -213,9 +213,19 @@ static tree::Block* parseBlock(XMLElement* element) {
         exit_labels->push_back(stringToLabel(exit_label));
     }
 
-    // Parse statements
+    // Parse statements.  Earlier assignments produced IR where the list of
+    // statements was wrapped in a tag named "Statements" instead of
+    // "Sequence".  The previous implementation expected only "Sequence" and
+    // passed a nullptr to `parseSeq` when encountering the old format, which
+    // led to a segmentation fault.  To maintain compatibility with both
+    // formats we check for either tag.
     XMLElement* stmsElement = element->FirstChildElement("Sequence");
-    tree::Seq* seq = parseSeq(stmsElement);
+    if (!stmsElement) {
+        stmsElement = element->FirstChildElement("Statements");
+    }
+
+    tree::Seq* seq = stmsElement ? parseSeq(stmsElement)
+                                 : new tree::Seq(new vector<tree::Stm*>());
 
     return new tree::Block(temp_map->named_label(stoi(entry_label)), exit_labels, seq->sl);
 }
@@ -392,7 +402,9 @@ tree::Binop* parseBinop(XMLElement* element) {
     cout << "Parsing Binop" << endl;
 #endif
     string op = element->Attribute("op");
-    auto type = stringToType(element->Attribute("type"));
+    const char* typeAttr = element->Attribute("type");
+    // Older IR files omit the result type.  Assume INT in that case.
+    auto type = typeAttr ? stringToType(typeAttr) : tree::Type::INT;
     auto e = element->FirstChildElement();
     auto left = parseExp(e);
     e = e->NextSiblingElement();
@@ -420,7 +432,11 @@ tree::ExtCall* parseExtCall(XMLElement* element) {
     cout << "Parsing ExtCall" << endl;
 #endif
     string extfun = element->Attribute("extfun");
-    Type type = stringToType(element->Attribute("type"));
+    const char *typeAttr = element->Attribute("type");
+    // Some test cases omit the return type for external calls (e.g. putint).
+    // Treat a missing attribute as INT to avoid constructing a std::string from
+    // a null pointer.
+    Type type = typeAttr ? stringToType(typeAttr) : tree::Type::INT;
     auto args = new vector<tree::Exp*>();
     XMLElement* argsElement = element->FirstChildElement("Arguments");
     for (XMLElement* argElement = argsElement->FirstChildElement(); argElement; argElement = argElement->NextSiblingElement()) {
