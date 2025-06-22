@@ -270,8 +270,8 @@
                     <temp id="10201"/>
                 </def>
                 <use>
-                    <temp id="10202"/>
                     <temp id="10200"/>
+                    <temp id="10202"/>
                 </use>
             </phi>
             <move kind="MOVE" dst="11600" temp_type="INT">
@@ -511,8 +511,8 @@
                 <left kind="TEMP" id="10001" type="INT"/>
                 <right kind="TEMP" id="13100" type="INT"/>
                 <use>
-                    <temp id="13100"/>
                     <temp id="10001"/>
+                    <temp id="13100"/>
                 </use>
             </cjump>
         </block>
@@ -637,8 +637,8 @@
                 <left kind="TEMP" id="13500" type="INT"/>
                 <right kind="TEMP" id="10700" type="INT"/>
                 <use>
-                    <temp id="13500"/>
                     <temp id="10700"/>
+                    <temp id="13500"/>
                 </use>
             </cjump>
         </block>
@@ -695,8 +695,8 @@
                     <temp id="13900"/>
                 </def>
                 <use>
-                    <temp id="11500"/>
                     <temp id="13800"/>
+                    <temp id="11500"/>
                 </use>
             </movebinop>
             <load kind="LOAD" dst="14000" temp_type="INT">
@@ -712,8 +712,8 @@
                 <left kind="TEMP" id="11600" type="INT"/>
                 <right kind="TEMP" id="14000" type="INT"/>
                 <use>
-                    <temp id="11600"/>
                     <temp id="14000"/>
+                    <temp id="11600"/>
                 </use>
             </cjump>
         </block>
@@ -745,8 +745,8 @@
                 <left kind="TEMP" id="10001" type="INT"/>
                 <right kind="TEMP" id="10800" type="INT"/>
                 <use>
-                    <temp id="10001"/>
                     <temp id="10800"/>
+                    <temp id="10001"/>
                 </use>
             </cjump>
         </block>
@@ -828,8 +828,8 @@
                 <left kind="TEMP" id="10001" type="INT"/>
                 <right kind="TEMP" id="10900" type="INT"/>
                 <use>
-                    <temp id="10001"/>
                     <temp id="10900"/>
+                    <temp id="10001"/>
                 </use>
             </cjump>
         </block>
@@ -881,8 +881,8 @@
                 <left kind="TEMP" id="14400" type="INT"/>
                 <right kind="TEMP" id="11000" type="INT"/>
                 <use>
-                    <temp id="11000"/>
                     <temp id="14400"/>
+                    <temp id="11000"/>
                 </use>
             </cjump>
         </block>

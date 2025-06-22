@@ -272,8 +272,8 @@
                 <left kind="TEMP" id="106" type="INT"/>
                 <right kind="TEMP" id="107" type="INT"/>
                 <use>
-                    <temp id="106"/>
                     <temp id="107"/>
+                    <temp id="106"/>
                 </use>
             </cjump>
             <label kind="LABEL" name="100"/>

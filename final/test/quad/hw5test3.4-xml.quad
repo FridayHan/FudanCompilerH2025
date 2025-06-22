@@ -461,8 +461,8 @@
                     <temp id="139"/>
                 </def>
                 <use>
-                    <temp id="138"/>
                     <temp id="120"/>
+                    <temp id="138"/>
                 </use>
             </movebinop>
             <load kind="LOAD" dst="140" temp_type="INT">

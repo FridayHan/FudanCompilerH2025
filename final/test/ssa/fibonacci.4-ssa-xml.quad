@@ -298,8 +298,8 @@
                     <temp id="10001"/>
                 </def>
                 <use>
-                    <temp id="10000"/>
                     <temp id="10002"/>
+                    <temp id="10000"/>
                 </use>
             </phi>
             <cjump kind="CJUMP" relop="&lt;" true="111" false="112">
@@ -516,9 +516,9 @@
                     <temp id="10700"/>
                 </def>
                 <use>
+                    <temp id="10400"/>
                     <temp id="10500"/>
                     <temp id="10600"/>
-                    <temp id="10400"/>
                 </use>
             </movecall>
             <move kind="MOVE" dst="11300" temp_type="INT">

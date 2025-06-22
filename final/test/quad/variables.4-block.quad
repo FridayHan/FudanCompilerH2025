@@ -1,0 +1,62 @@
+Function _^main^_^main() last_label=100 last_temp=157:
+  Block: Entry Label: L100
+    Exit labels: 
+    LABEL L100; def: use: 
+    MOVE t100:INT <- Const:3; def: 100 use: 
+    MOVE t101:INT <- Const:4; def: 101 use: 
+    MOVE t102:INT <- Const:5; def: 102 use: 
+    MOVE t103:INT <- Const:6; def: 103 use: 
+    MOVE t104:INT <- Const:7; def: 104 use: 
+    MOVE t105:INT <- Const:8; def: 105 use: 
+    MOVE t106:INT <- Const:9; def: 106 use: 
+    MOVE t107:INT <- Const:10; def: 107 use: 
+    MOVE t108:INT <- Const:11; def: 108 use: 
+    MOVE t112:INT <- Const:0; def: 112 use: 
+    MOVE t113:INT <- Const:1; def: 113 use: 
+    MOVE t114:INT <- Const:2; def: 114 use: 
+    MOVE_BINOP t120:INT <- (+, t112:INT, t113:INT); def: 120 use: 112 113 
+    MOVE_BINOP t121:INT <- (+, t120:INT, t114:INT); def: 121 use: 120 114 
+    MOVE_BINOP t122:INT <- (+, t121:INT, t100:INT); def: 122 use: 121 100 
+    MOVE_BINOP t123:INT <- (+, t122:INT, t101:INT); def: 123 use: 122 101 
+    MOVE_BINOP t124:INT <- (+, t123:INT, t102:INT); def: 124 use: 123 102 
+    MOVE_BINOP t125:INT <- (+, t124:INT, t103:INT); def: 125 use: 124 103 
+    MOVE_BINOP t126:INT <- (+, t125:INT, t104:INT); def: 126 use: 125 104 
+    MOVE_BINOP t127:INT <- (+, t126:INT, t105:INT); def: 127 use: 126 105 
+    MOVE_BINOP t128:INT <- (+, t127:INT, t106:INT); def: 128 use: 127 106 
+    MOVE_BINOP t129:INT <- (+, t128:INT, t107:INT); def: 129 use: 128 107 
+    MOVE_BINOP t109:INT <- (+, t129:INT, t108:INT); def: 109 use: 129 108 
+    MOVE_BINOP t130:INT <- (*, t109:INT, t112:INT); def: 130 use: 109 112 
+    MOVE_BINOP t131:INT <- (*, t109:INT, t113:INT); def: 131 use: 109 113 
+    MOVE_BINOP t132:INT <- (+, t130:INT, t131:INT); def: 132 use: 130 131 
+    MOVE_BINOP t133:INT <- (*, t109:INT, t114:INT); def: 133 use: 109 114 
+    MOVE_BINOP t134:INT <- (+, t132:INT, t133:INT); def: 134 use: 132 133 
+    MOVE_BINOP t135:INT <- (*, t109:INT, t100:INT); def: 135 use: 109 100 
+    MOVE_BINOP t136:INT <- (+, t134:INT, t135:INT); def: 136 use: 134 135 
+    MOVE_BINOP t137:INT <- (*, t109:INT, t101:INT); def: 137 use: 109 101 
+    MOVE_BINOP t138:INT <- (+, t136:INT, t137:INT); def: 138 use: 136 137 
+    MOVE_BINOP t139:INT <- (*, t109:INT, t102:INT); def: 139 use: 109 102 
+    MOVE_BINOP t140:INT <- (+, t138:INT, t139:INT); def: 140 use: 138 139 
+    MOVE_BINOP t141:INT <- (*, t109:INT, t103:INT); def: 141 use: 109 103 
+    MOVE_BINOP t142:INT <- (+, t140:INT, t141:INT); def: 142 use: 140 141 
+    MOVE_BINOP t143:INT <- (*, t109:INT, t104:INT); def: 143 use: 109 104 
+    MOVE_BINOP t144:INT <- (+, t142:INT, t143:INT); def: 144 use: 142 143 
+    MOVE_BINOP t145:INT <- (*, t109:INT, t105:INT); def: 145 use: 109 105 
+    MOVE_BINOP t146:INT <- (+, t144:INT, t145:INT); def: 146 use: 144 145 
+    MOVE_BINOP t147:INT <- (*, t109:INT, t106:INT); def: 147 use: 109 106 
+    MOVE_BINOP t148:INT <- (+, t146:INT, t147:INT); def: 148 use: 146 147 
+    MOVE_BINOP t149:INT <- (*, t109:INT, t107:INT); def: 149 use: 109 107 
+    MOVE_BINOP t150:INT <- (+, t148:INT, t149:INT); def: 150 use: 148 149 
+    MOVE_BINOP t151:INT <- (*, t109:INT, t108:INT); def: 151 use: 109 108 
+    MOVE_BINOP t110:INT <- (+, t150:INT, t151:INT); def: 110 use: 150 151 
+    MOVE_BINOP t152:INT <- (+, t112:INT, t113:INT); def: 152 use: 112 113 
+    MOVE_BINOP t153:INT <- (/, t114:INT, t102:INT); def: 153 use: 114 102 
+    MOVE_BINOP t154:INT <- (+, t152:INT, t153:INT); def: 154 use: 152 153 
+    MOVE_BINOP t155:INT <- (*, t108:INT, t107:INT); def: 155 use: 108 107 
+    MOVE_BINOP t116:INT <- (+, t154:INT, t155:INT); def: 116 use: 154 155 
+    EXTCALL putint(t116:INT); def: use: 116 
+    EXTCALL putint(t109:INT); def: use: 109 
+    EXTCALL putint(t110:INT); def: use: 110 
+    MOVE_BINOP t156:INT <- (*, t104:INT, t103:INT); def: 156 use: 104 103 
+    MOVE_BINOP t157:INT <- (+, t101:INT, t156:INT); def: 157 use: 101 156 
+    MOVE_BINOP t111:INT <- (-, t157:INT, t106:INT); def: 111 use: 157 106 
+    RETURN t111:INT; def: use: 111 

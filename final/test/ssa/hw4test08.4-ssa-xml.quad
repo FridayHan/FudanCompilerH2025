@@ -1,0 +1,166 @@
+<program kind="PROGRAM">
+    <funcdecl kind="FUNCDECL" name="_^main^_^main" last_label_num="115" last_temp_num="102">
+        <block kind="BLOCK" entry="115">
+            <exits>
+                <exit label="102"/>
+                <exit label="103"/>
+            </exits>
+            <label kind="LABEL" name="115"/>
+            <move kind="MOVE" dst="10100" temp_type="INT">
+                <src kind="CONST" value="19"/>
+                <def>
+                    <temp id="10100"/>
+                </def>
+            </move>
+            <cjump kind="CJUMP" relop="!=" true="102" false="103">
+                <left kind="TEMP" id="100" type="INT"/>
+                <right kind="CONST" value="0"/>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="102">
+            <exits>
+                <exit label="104"/>
+            </exits>
+            <label kind="LABEL" name="102"/>
+            <move kind="MOVE" dst="10000" temp_type="INT">
+                <src kind="TEMP" id="100" type="INT"/>
+                <def>
+                    <temp id="10000"/>
+                </def>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </move>
+            <jump kind="JUMP" target="104"/>
+        </block>
+        <block kind="BLOCK" entry="103">
+            <exits>
+                <exit label="104"/>
+            </exits>
+            <label kind="LABEL" name="103"/>
+            <jump kind="JUMP" target="104"/>
+        </block>
+        <block kind="BLOCK" entry="104">
+            <exits>
+                <exit label="107"/>
+                <exit label="108"/>
+            </exits>
+            <label kind="LABEL" name="104"/>
+            <phi kind="PHI" dst="10001" temp_type="INT">
+                <args>
+                    <arg temp="10000" label="102"/>
+                    <arg temp="100" label="103"/>
+                </args>
+                <def>
+                    <temp id="10001"/>
+                </def>
+                <use>
+                    <temp id="10000"/>
+                    <temp id="100"/>
+                </use>
+            </phi>
+            <cjump kind="CJUMP" relop="!=" true="107" false="108">
+                <left kind="TEMP" id="10001" type="INT"/>
+                <right kind="CONST" value="0"/>
+                <use>
+                    <temp id="10001"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="107">
+            <exits>
+                <exit label="109"/>
+            </exits>
+            <label kind="LABEL" name="107"/>
+            <move kind="MOVE" dst="10002" temp_type="INT">
+                <src kind="TEMP" id="10001" type="INT"/>
+                <def>
+                    <temp id="10002"/>
+                </def>
+                <use>
+                    <temp id="10001"/>
+                </use>
+            </move>
+            <jump kind="JUMP" target="109"/>
+        </block>
+        <block kind="BLOCK" entry="108">
+            <exits>
+                <exit label="109"/>
+            </exits>
+            <label kind="LABEL" name="108"/>
+            <jump kind="JUMP" target="109"/>
+        </block>
+        <block kind="BLOCK" entry="109">
+            <exits>
+                <exit label="112"/>
+                <exit label="113"/>
+            </exits>
+            <label kind="LABEL" name="109"/>
+            <phi kind="PHI" dst="10003" temp_type="INT">
+                <args>
+                    <arg temp="10002" label="107"/>
+                    <arg temp="10001" label="108"/>
+                </args>
+                <def>
+                    <temp id="10003"/>
+                </def>
+                <use>
+                    <temp id="10001"/>
+                    <temp id="10002"/>
+                </use>
+            </phi>
+            <cjump kind="CJUMP" relop="!=" true="112" false="113">
+                <left kind="TEMP" id="10003" type="INT"/>
+                <right kind="CONST" value="0"/>
+                <use>
+                    <temp id="10003"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="112">
+            <exits>
+                <exit label="114"/>
+            </exits>
+            <label kind="LABEL" name="112"/>
+            <move kind="MOVE" dst="10101" temp_type="INT">
+                <src kind="CONST" value="20"/>
+                <def>
+                    <temp id="10101"/>
+                </def>
+            </move>
+            <jump kind="JUMP" target="114"/>
+        </block>
+        <block kind="BLOCK" entry="113">
+            <exits>
+                <exit label="114"/>
+            </exits>
+            <label kind="LABEL" name="113"/>
+            <jump kind="JUMP" target="114"/>
+        </block>
+        <block kind="BLOCK" entry="114">
+            <label kind="LABEL" name="114"/>
+            <phi kind="PHI" dst="10102" temp_type="INT">
+                <args>
+                    <arg temp="10101" label="112"/>
+                    <arg temp="10100" label="113"/>
+                </args>
+                <def>
+                    <temp id="10102"/>
+                </def>
+                <use>
+                    <temp id="10101"/>
+                    <temp id="10100"/>
+                </use>
+            </phi>
+            <return kind="RETURN">
+                <value kind="TEMP" id="10102" type="INT"/>
+                <use>
+                    <temp id="10102"/>
+                </use>
+            </return>
+        </block>
+    </funcdecl>
+</program>

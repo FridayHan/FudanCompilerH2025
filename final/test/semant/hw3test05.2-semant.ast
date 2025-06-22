@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDMJAST>
+    <NameMaps>
+        <Class name="C0" ancestor="C2"/>
+        <Class name="C1"/>
+        <Class name="C2"/>
+        <Class name="C3" ancestor="C2"/>
+        <Class name="_^main^_">
+            <Method name="main">
+                <Formal id="_^return^_main">
+                    <Formal>
+                        <Type typeKind="INT"/>
+                        <IdExp id="_^return^_main"/>
+                    </Formal>
+                </Formal>
+            </Method>
+        </Class>
+    </NameMaps>
+    <Program>
+        <MainMethod>
+            <VarDeclList/>
+            <StmList/>
+        </MainMethod>
+        <ClassDeclList>
+            <ClassDecl>
+                <IdExp id="C2"/>
+                <ExtendsId eid="C1"/>
+                <VarDeclList/>
+                <MethodDeclList/>
+            </ClassDecl>
+            <ClassDecl>
+                <IdExp id="C3"/>
+                <ExtendsId eid="C2"/>
+                <VarDeclList/>
+                <MethodDeclList/>
+            </ClassDecl>
+            <ClassDecl>
+                <IdExp id="C1"/>
+                <ExtendsId eid="C0"/>
+                <VarDeclList/>
+                <MethodDeclList/>
+            </ClassDecl>
+            <ClassDecl>
+                <IdExp id="C0"/>
+                <ExtendsId eid="C3"/>
+                <VarDeclList/>
+                <MethodDeclList/>
+            </ClassDecl>
+        </ClassDeclList>
+    </Program>
+</FDMJAST>

@@ -134,8 +134,8 @@
                     <temp id="10101"/>
                 </def>
                 <use>
-                    <temp id="10102"/>
                     <temp id="10100"/>
+                    <temp id="10102"/>
                 </use>
             </phi>
             <cjump kind="CJUMP" relop="&lt;" true="103" false="104">

@@ -1,0 +1,7 @@
+<program kind="PROGRAM">
+    <funcdecl kind="FUNCDECL" name="_^main^_^main" last_label_num="100" last_temp_num="100">
+        <block kind="BLOCK" entry="100">
+            <label kind="LABEL" name="100"/>
+        </block>
+    </funcdecl>
+</program>

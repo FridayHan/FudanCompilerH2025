@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Program>
+    <MainMethod>
+        <VarDeclList>
+            <VarDecl>
+                <Type typeKind="INTARRAY">
+                    <Arity val="0"/>
+                </Type>
+                <IdExp id="a"/>
+            </VarDecl>
+            <VarDecl>
+                <Type typeKind="INTARRAY">
+                    <Arity val="5"/>
+                </Type>
+                <IdExp id="b"/>
+            </VarDecl>
+            <VarDecl>
+                <Type typeKind="INTARRAY">
+                    <Arity val="5"/>
+                </Type>
+                <IdExp id="c"/>
+            </VarDecl>
+        </VarDeclList>
+        <StmList>
+            <Assign>
+                <IdExp id="a"/>
+                <BinaryOp>
+                    <IdExp id="b"/>
+                    <OpExp op="+"/>
+                    <IdExp id="c"/>
+                </BinaryOp>
+            </Assign>
+            <Return>
+                <IntExp val="0"/>
+            </Return>
+        </StmList>
+    </MainMethod>
+    <ClassDeclList/>
+</Program>

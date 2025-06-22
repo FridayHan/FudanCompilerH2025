@@ -1,0 +1,208 @@
+<program kind="PROGRAM">
+    <funcdecl kind="FUNCDECL" name="_^main^_^main" last_label_num="111" last_temp_num="112">
+        <block kind="BLOCK" entry="111">
+            <exits>
+                <exit label="108"/>
+                <exit label="107"/>
+            </exits>
+            <label kind="LABEL" name="111"/>
+            <move kind="MOVE" dst="10000" temp_type="INT">
+                <src kind="CONST" value="1"/>
+                <def>
+                    <temp id="10000"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="10200" temp_type="INT">
+                <src kind="CONST" value="0"/>
+                <def>
+                    <temp id="10200"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="105" temp_type="INT">
+                <src kind="CONST" value="2"/>
+                <def>
+                    <temp id="105"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="106" temp_type="INT">
+                <src kind="CONST" value="3"/>
+                <def>
+                    <temp id="106"/>
+                </def>
+            </move>
+            <movebinop kind="MOVE_BINOP" dst="10300" temp_type="INT" op="*">
+                <left kind="TEMP" id="105" type="INT"/>
+                <right kind="TEMP" id="106" type="INT"/>
+                <def>
+                    <temp id="10300"/>
+                </def>
+                <use>
+                    <temp id="105"/>
+                    <temp id="106"/>
+                </use>
+            </movebinop>
+            <move kind="MOVE" dst="107" temp_type="INT">
+                <src kind="CONST" value="1"/>
+                <def>
+                    <temp id="107"/>
+                </def>
+            </move>
+            <movebinop kind="MOVE_BINOP" dst="10400" temp_type="INT" op="+">
+                <left kind="TEMP" id="107" type="INT"/>
+                <right kind="TEMP" id="10300" type="INT"/>
+                <def>
+                    <temp id="10400"/>
+                </def>
+                <use>
+                    <temp id="10300"/>
+                    <temp id="107"/>
+                </use>
+            </movebinop>
+            <move kind="MOVE" dst="108" temp_type="INT">
+                <src kind="CONST" value="3"/>
+                <def>
+                    <temp id="108"/>
+                </def>
+            </move>
+            <cjump kind="CJUMP" relop="&gt;" true="108" false="107">
+                <left kind="TEMP" id="10400" type="INT"/>
+                <right kind="TEMP" id="108" type="INT"/>
+                <use>
+                    <temp id="10400"/>
+                    <temp id="108"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="107">
+            <exits>
+                <exit label="104"/>
+                <exit label="109"/>
+            </exits>
+            <label kind="LABEL" name="107"/>
+            <move kind="MOVE" dst="10202" temp_type="INT">
+                <src kind="TEMP" id="10200" type="INT"/>
+                <def>
+                    <temp id="10202"/>
+                </def>
+                <use>
+                    <temp id="10200"/>
+                </use>
+            </move>
+            <move kind="MOVE" dst="109" temp_type="INT">
+                <src kind="CONST" value="4"/>
+                <def>
+                    <temp id="109"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="110" temp_type="INT">
+                <src kind="CONST" value="0"/>
+                <def>
+                    <temp id="110"/>
+                </def>
+            </move>
+            <cjump kind="CJUMP" relop="!=" true="104" false="109">
+                <left kind="TEMP" id="109" type="INT"/>
+                <right kind="TEMP" id="110" type="INT"/>
+                <use>
+                    <temp id="109"/>
+                    <temp id="110"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="104">
+            <exits>
+                <exit label="108"/>
+                <exit label="109"/>
+            </exits>
+            <label kind="LABEL" name="104"/>
+            <move kind="MOVE" dst="10202" temp_type="INT">
+                <src kind="TEMP" id="10200" type="INT"/>
+                <def>
+                    <temp id="10202"/>
+                </def>
+                <use>
+                    <temp id="10200"/>
+                </use>
+            </move>
+            <move kind="MOVE" dst="111" temp_type="INT">
+                <src kind="CONST" value="5"/>
+                <def>
+                    <temp id="111"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="112" temp_type="INT">
+                <src kind="CONST" value="0"/>
+                <def>
+                    <temp id="112"/>
+                </def>
+            </move>
+            <cjump kind="CJUMP" relop="==" true="108" false="109">
+                <left kind="TEMP" id="111" type="INT"/>
+                <right kind="TEMP" id="112" type="INT"/>
+                <use>
+                    <temp id="111"/>
+                    <temp id="112"/>
+                </use>
+            </cjump>
+        </block>
+        <block kind="BLOCK" entry="108">
+            <exits>
+                <exit label="109"/>
+            </exits>
+            <label kind="LABEL" name="108"/>
+            <move kind="MOVE" dst="10201" temp_type="INT">
+                <src kind="CONST" value="1"/>
+                <def>
+                    <temp id="10201"/>
+                </def>
+            </move>
+            <move kind="MOVE" dst="10202" temp_type="INT">
+                <src kind="TEMP" id="10201" type="INT"/>
+                <def>
+                    <temp id="10202"/>
+                </def>
+                <use>
+                    <temp id="10201"/>
+                </use>
+            </move>
+            <jump kind="JUMP" target="109"/>
+        </block>
+        <block kind="BLOCK" entry="109">
+            <label kind="LABEL" name="109"/>
+            <move kind="MOVE" dst="10001" temp_type="INT">
+                <src kind="TEMP" id="10202" type="INT"/>
+                <def>
+                    <temp id="10001"/>
+                </def>
+                <use>
+                    <temp id="10202"/>
+                </use>
+            </move>
+            <movebinop kind="MOVE_BINOP" dst="10002" temp_type="INT" op="+">
+                <left kind="TEMP" id="10001" type="INT"/>
+                <right kind="CONST" value="1"/>
+                <def>
+                    <temp id="10002"/>
+                </def>
+                <use>
+                    <temp id="10001"/>
+                </use>
+            </movebinop>
+            <move kind="MOVE" dst="0" temp_type="INT">
+                <src kind="TEMP" id="10002" type="INT"/>
+                <def>
+                    <temp id="0"/>
+                </def>
+                <use>
+                    <temp id="10002"/>
+                </use>
+            </move>
+            <return kind="RETURN">
+                <value kind="TEMP" id="0" type="INT"/>
+                <use>
+                    <temp id="0"/>
+                </use>
+            </return>
+        </block>
+    </funcdecl>
+</program>

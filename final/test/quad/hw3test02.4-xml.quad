@@ -1,0 +1,137 @@
+<program kind="PROGRAM">
+    <funcdecl kind="FUNCDECL" name="_^main^_^main" last_label_num="102" last_temp_num="112">
+        <block kind="BLOCK" entry="102">
+            <label kind="LABEL" name="102"/>
+            <moveextcall kind="MOVE_EXTCALL" dst="100" temp_type="PTR">
+                <extcall kind="EXTCALL" name="malloc">
+                    <args>
+                        <arg index="0">
+                            <value kind="CONST" value="12"/>
+                        </arg>
+                    </args>
+                </extcall>
+                <def>
+                    <temp id="100"/>
+                </def>
+            </moveextcall>
+            <store kind="STORE">
+                <src kind="CONST" value="2"/>
+                <dst kind="TEMP" id="100" type="PTR"/>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </store>
+            <movebinop kind="MOVE_BINOP" dst="107" temp_type="PTR" op="+">
+                <left kind="TEMP" id="100" type="PTR"/>
+                <right kind="CONST" value="4"/>
+                <def>
+                    <temp id="107"/>
+                </def>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </movebinop>
+            <store kind="STORE">
+                <src kind="CONST" value="1"/>
+                <dst kind="TEMP" id="107" type="PTR"/>
+                <use>
+                    <temp id="107"/>
+                </use>
+            </store>
+            <movebinop kind="MOVE_BINOP" dst="108" temp_type="PTR" op="+">
+                <left kind="TEMP" id="100" type="PTR"/>
+                <right kind="CONST" value="8"/>
+                <def>
+                    <temp id="108"/>
+                </def>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </movebinop>
+            <store kind="STORE">
+                <src kind="CONST" value="2"/>
+                <dst kind="TEMP" id="108" type="PTR"/>
+                <use>
+                    <temp id="108"/>
+                </use>
+            </store>
+            <move kind="MOVE" dst="106" temp_type="PTR">
+                <src kind="TEMP" id="100" type="PTR"/>
+                <def>
+                    <temp id="106"/>
+                </def>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </move>
+            <load kind="LOAD" dst="103" temp_type="INT">
+                <src kind="TEMP" id="100" type="PTR"/>
+                <def>
+                    <temp id="103"/>
+                </def>
+                <use>
+                    <temp id="100"/>
+                </use>
+            </load>
+            <cjump kind="CJUMP" relop="&gt;=" true="100" false="101">
+                <left kind="CONST" value="0"/>
+                <right kind="TEMP" id="103" type="INT"/>
+                <use>
+                    <temp id="103"/>
+                </use>
+            </cjump>
+            <label kind="LABEL" name="100"/>
+            <extcall kind="EXTCALL" name="exit">
+                <args>
+                    <arg index="0">
+                        <value kind="CONST" value="-1"/>
+                    </arg>
+                </args>
+            </extcall>
+            <label kind="LABEL" name="101"/>
+            <movebinop kind="MOVE_BINOP" dst="109" temp_type="INT" op="+">
+                <left kind="CONST" value="0"/>
+                <right kind="CONST" value="1"/>
+                <def>
+                    <temp id="109"/>
+                </def>
+            </movebinop>
+            <movebinop kind="MOVE_BINOP" dst="110" temp_type="INT" op="*">
+                <left kind="TEMP" id="109" type="INT"/>
+                <right kind="CONST" value="4"/>
+                <def>
+                    <temp id="110"/>
+                </def>
+                <use>
+                    <temp id="109"/>
+                </use>
+            </movebinop>
+            <movebinop kind="MOVE_BINOP" dst="111" temp_type="PTR" op="+">
+                <left kind="TEMP" id="106" type="PTR"/>
+                <right kind="TEMP" id="110" type="INT"/>
+                <def>
+                    <temp id="111"/>
+                </def>
+                <use>
+                    <temp id="106"/>
+                    <temp id="110"/>
+                </use>
+            </movebinop>
+            <load kind="LOAD" dst="112" temp_type="INT">
+                <src kind="TEMP" id="111" type="PTR"/>
+                <def>
+                    <temp id="112"/>
+                </def>
+                <use>
+                    <temp id="111"/>
+                </use>
+            </load>
+            <return kind="RETURN">
+                <value kind="TEMP" id="112" type="INT"/>
+                <use>
+                    <temp id="112"/>
+                </use>
+            </return>
+        </block>
+    </funcdecl>
+</program>
