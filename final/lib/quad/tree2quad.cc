@@ -248,11 +248,35 @@ void Tree2Quad::visit(Move *node) {
       result->insert(result->end(), visit_result->begin(), visit_result->end());
     }
 
-    // Get source term
-    node->src->accept(*this);
-    QuadTerm *src_term = output_term;
-    if (visit_result) {
-      result->insert(result->end(), visit_result->begin(), visit_result->end());
+    QuadTerm *src_term = nullptr;
+    // Get source term. When the source is a call or extcall, the Call visitor
+    // does not return a value in output_term.  In that case generate a
+    // temporary to hold the result first and append the corresponding quads
+    // before the store.
+    if (node->src->getTreeKind() == Kind::CALL) {
+      Call *call_node = static_cast<Call *>(node->src);
+      TempExp *tmp = new TempExp(call_node->type, temp_map->newtemp());
+      Move *tmp_move = new Move(tmp, call_node);
+      tmp_move->accept(*this);
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
+      src_term = new QuadTerm(tmp);
+    } else if (node->src->getTreeKind() == Kind::EXTCALL) {
+      ExtCall *extcall_node = static_cast<ExtCall *>(node->src);
+      TempExp *tmp = new TempExp(extcall_node->type, temp_map->newtemp());
+      Move *tmp_move = new Move(tmp, extcall_node);
+      tmp_move->accept(*this);
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
+      src_term = new QuadTerm(tmp);
+    } else {
+      node->src->accept(*this);
+      src_term = output_term;
+      if (visit_result) {
+        result->insert(result->end(), visit_result->begin(), visit_result->end());
+      }
     }
 
     // Create def/use sets
